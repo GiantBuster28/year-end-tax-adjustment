@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>年末調整システム モックアップ</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
+
+  /* ── Header ── */
+  .app-header { background: #1a3a5c; color: #fff; height: 56px; display: flex; align-items: center; padding: 0 24px; gap: 16px; position: fixed; top: 0; left: 0; right: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  .app-header .logo { font-size: 17px; font-weight: 700; letter-spacing: .05em; }
+  .app-header .breadcrumb { font-size: 12px; color: #a0b4c8; margin-left: auto; }
+  .app-header .user-info { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .app-header .user-info .avatar { width: 30px; height: 30px; border-radius: 50%; background: #4a90d9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  .logout-btn { background: rgba(255,255,255,.15); border: none; color: #fff; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .logout-btn:hover { background: rgba(255,255,255,.25); }
+
+  /* ── Sidebar ── */
+  .layout { display: flex; margin-top: 56px; min-height: calc(100vh - 56px); }
+  .sidebar { width: 220px; background: #fff; border-right: 1px solid #e0e6ed; padding: 16px 0; flex-shrink: 0; position: fixed; top: 56px; bottom: 0; overflow-y: auto; }
+  .sidebar-section { padding: 8px 16px 4px; font-size: 11px; color: #8a9bb0; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .sidebar a { display: flex; align-items: center; gap: 8px; padding: 9px 20px; color: #3a4a5c; text-decoration: none; font-size: 13px; cursor: pointer; transition: background .15s; }
+  .sidebar a:hover { background: #f0f4f8; }
+  .sidebar a.active { background: #e8f0fe; color: #1a56db; font-weight: 600; border-right: 3px solid #1a56db; }
+  .sidebar a .icon { width: 18px; text-align: center; font-size: 15px; }
+
+  /* ── Main ── */
+  .main { margin-left: 220px; flex: 1; padding: 28px 32px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Page title ── */
+  .page-title { font-size: 20px; font-weight: 700; color: #1a3a5c; margin-bottom: 4px; }
+  .page-subtitle { font-size: 13px; color: #6a7f96; margin-bottom: 24px; }
+
+  /* ── Card ── */
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 24px; margin-bottom: 20px; }
+  .card-title { font-size: 15px; font-weight: 700; color: #1a3a5c; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #e8f0fe; }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+  .btn-primary { background: #1a56db; color: #fff; }
+  .btn-primary:hover { background: #1446b5; }
+  .btn-secondary { background: #fff; color: #3a4a5c; border: 1px solid #c0cdd8; }
+  .btn-secondary:hover { background: #f0f4f8; }
+  .btn-success { background: #0d9488; color: #fff; }
+  .btn-success:hover { background: #0a7a70; }
+  .btn-danger { background: #dc2626; color: #fff; }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-warning { background: #d97706; color: #fff; }
+  .btn-warning:hover { background: #b45309; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-lg { padding: 12px 32px; font-size: 15px; }
+  .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+
+  /* ── Form ── */
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: #3a4a5c; margin-bottom: 6px; }
+  .form-label .required { color: #dc2626; margin-left: 4px; font-size: 11px; }
+  .form-control { width: 100%; padding: 8px 12px; border: 1px solid #c0cdd8; border-radius: 6px; font-size: 13px; color: #1a1a2e; outline: none; transition: border .15s; }
+  .form-control:focus { border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+  .form-control[readonly] { background: #f7f9fb; }
+  .form-hint { font-size: 11px; color: #8a9bb0; margin-top: 4px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236a7f96' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f0f4f8; color: #3a4a5c; font-size: 12px; font-weight: 700; padding: 10px 14px; text-align: left; border-bottom: 2px solid #d0dae6; white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid #eef2f7; font-size: 13px; vertical-align: middle; }
+  tr:hover td { background: #f7f9fb; }
+
+  /* ── Badge ── */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-draft { background: #f1f5f9; color: #64748b; }
+  .badge-submitted { background: #dbeafe; color: #1d4ed8; }
+  .badge-approved { background: #dcfce7; color: #15803d; }
+  .badge-rejected { background: #fee2e2; color: #dc2626; }
+  .badge-pending { background: #fef3c7; color: #92400e; }
+
+  /* ── Status steps ── */
+  .steps { display: flex; align-items: center; margin-bottom: 28px; }
+  .step { display: flex; align-items: center; gap: 8px; }
+  .step-circle { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .step.done .step-circle { background: #0d9488; color: #fff; }
+  .step.active .step-circle { background: #1a56db; color: #fff; }
+  .step.todo .step-circle { background: #e2e8f0; color: #94a3b8; }
+  .step-label { font-size: 12px; color: #64748b; white-space: nowrap; }
+  .step.active .step-label { color: #1a56db; font-weight: 700; }
+  .step.done .step-label { color: #0d9488; }
+  .step-line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 8px; min-width: 20px; }
+  .step-line.done { background: #0d9488; }
+
+  /* ── Alert ── */
+  .alert { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+  .alert-info { background: #eff6ff; color: #1e40af; border-left: 4px solid #3b82f6; }
+  .alert-success { background: #f0fdf4; color: #166534; border-left: 4px solid #22c55e; }
+  .alert-warning { background: #fffbeb; color: #92400e; border-left: 4px solid #f59e0b; }
+  .alert-danger { background: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444; }
+
+  /* ── Dashboard stats ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-top: 4px solid; }
+  .stat-card.blue { border-color: #3b82f6; }
+  .stat-card.green { border-color: #22c55e; }
+  .stat-card.yellow { border-color: #f59e0b; }
+  .stat-card.red { border-color: #ef4444; }
+  .stat-number { font-size: 32px; font-weight: 800; color: #1a3a5c; }
+  .stat-label { font-size: 12px; color: #6a7f96; margin-top: 4px; }
+  .stat-sub { font-size: 11px; color: #94a3b8; margin-top: 8px; }
+
+  /* ── Login screen ── */
+  .login-wrap { min-height: 100vh; background: linear-gradient(135deg, #1a3a5c 0%, #0f2744 100%); display: flex; align-items: center; justify-content: center; }
+  .login-box { background: #fff; border-radius: 12px; padding: 48px 40px; width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  .login-logo { text-align: center; margin-bottom: 32px; }
+  .login-logo h1 { font-size: 20px; font-weight: 800; color: #1a3a5c; margin-top: 12px; }
+  .login-logo p { font-size: 12px; color: #6a7f96; margin-top: 4px; }
+  .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: #c0cdd8; font-size: 12px; }
+  .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: #e0e6ed; }
+  .login-role { display: flex; gap: 10px; margin-bottom: 24px; }
+  .login-role label { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 2px solid #e0e6ed; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: #3a4a5c; transition: all .15s; }
+  .login-role input[type=radio] { accent-color: #1a56db; }
+  .login-role label:has(input:checked) { border-color: #1a56db; background: #eff6ff; color: #1a56db; }
+
+  /* ── File upload ── */
+  .upload-zone { border: 2px dashed #c0cdd8; border-radius: 8px; padding: 32px; text-align: center; color: #6a7f96; cursor: pointer; transition: all .15s; }
+  .upload-zone:hover { border-color: #1a56db; background: #f0f4ff; }
+  .upload-zone .upload-icon { font-size: 40px; margin-bottom: 8px; }
+  .upload-list { margin-top: 16px; }
+  .upload-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f7f9fb; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }
+  .upload-item .file-icon { color: #dc2626; font-size: 18px; }
+
+  /* ── Progress bar ── */
+  .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; border-radius: 4px; background: #1a56db; transition: width .3s; }
+
+  /* ── Summary box ── */
+  .summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row.total { font-weight: 800; font-size: 15px; color: #1a3a5c; padding-top: 12px; }
+  .summary-value { font-weight: 600; color: #1a3a5c; }
+  .summary-value.negative { color: #0d9488; }
+
+  /* ── Modal overlay for transitions ── */
+  .transition-flash { position: fixed; inset: 0; background: rgba(26,86,219,.08); pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 200; }
+
+  /* ── No sidebar layout (login) ── */
+  body.login-page { background: none; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==============================
+     LOGIN SCREEN (SCR-001)
+     ============================== -->
+<div id="scr-login" class="screen active" style="min-height:100vh; background: linear-gradient(135deg,#1a3a5c,#0f2744); display:flex; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:48px 40px; width:400px; box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="text-align:center; margin-bottom:32px;">
+      <div style="font-size:40px;">📋</div>
+      <h1 style="font-size:20px; font-weight:800; color:#1a3a5c; margin-top:10px;">年末調整システム</h1>
+      <p style="font-size:12px; color:#6a7f96; margin-top:4px;">2026年度（令和8年度）</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ログイン区分</label>
+      <div class="login-role">
+        <label><input type="radio" name="role" value="emp" checked> 👤 従業員</label>
+        <label><input type="radio" name="role" value="adm"> 🔑 管理者</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">社員番号 / ID<span class="required">必須</span></label>
+      <input class="form-control" type="text" placeholder="例: EMP00123" value="EMP00123">
+    </div>
+    <div class="form-group">
+      <label class="form-label">パスワード<span class="required">必須</span></label>
+      <input class="form-control" type="password" placeholder="パスワードを入力" value="••••••••">
+    </div>
+    <button class="btn btn-primary btn-lg" style="width:100%; margin-top:8px; justify-content:center;"
+      onclick="loginAction()">ログイン</button>
+    <p style="text-align:center; margin-top:16px; font-size:12px; color:#6a7f96;">
+      <a href="#" style="color:#1a56db;">パスワードをお忘れの方はこちら</a>
+    </p>
+  </div>
+</div>
+
+<!-- ==============================
+     APP SHELL (shown after login)
+     ============================== -->
+<div id="app-shell" style="display:none;">
+
+  <!-- Header -->
+  <header class="app-header">
+    <span class="logo">📋 年末調整システム</span>
+    <span style="font-size:12px; background:rgba(255,255,255,.15); padding:2px 10px; border-radius:12px; color:#a0c4e8;">2026年度</span>
+    <span class="breadcrumb" id="breadcrumb-text">ホーム</span>
+    <div class="user-info">
+      <div class="avatar" id="user-avatar">田</div>
+      <span id="user-name-display">田中 花子</span>
+      <button class="logout-btn" onclick="logout()">ログアウト</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Sidebar Employee -->
+    <nav class="sidebar" id="sidebar-emp">
+      <div class="sidebar-section">メニュー</div>
+      <a onclick="go('scr-emp-top')" id="nav-emp-top"><span class="icon">🏠</span>ホーム</a>
+      <div class="sidebar-section">申告書入力</div>
+      <a onclick="go('scr-011')" id="nav-011"><span class="icon">👨‍👩‍👧</span>扶養控除等申告書</a>
+      <a onclick="go('scr-012')" id="nav-012"><span class="icon">🏥</span>保険料控除申告書</a>
+      <a onclick="go('scr-013')" id="nav-013"><span class="icon">🏠</span>住宅借入金等控除申告書</a>
+      <a onclick="go('scr-014')" id="nav-014"><span class="icon">📎</span>添付書類アップロード</a>
+      <a onclick="go('scr-015')" id="nav-015"><span class="icon">✅</span>確認・提出</a>
+      <div class="sidebar-section">確認</div>
+      <a onclick="go('scr-016')" id="nav-016"><span class="icon">📊</span>提出状況確認</a>
+      <a onclick="go('scr-017')" id="nav-017"><span class="icon">📄</span>源泉徴収票</a>
+    </nav>
+
+    <!-- Sidebar Admin -->
+    <nav class="sidebar" id="sidebar-adm" style="display:none;">
+      <div class="sidebar-section">メニュー</div>
+      <a onclick="go('scr-adm-top')" id="nav-adm-top"><span class="icon">📊</span>ダッシュボード</a>
+      <div class="sidebar-section">申告書管理</div>
+      <a onclick="go('scr-101')" id="nav-101"><span class="icon">📋</span>申告書一覧</a>
+      <div class="sidebar-section">年末調整</div>
+      <a onclick="go('scr-103')" id="nav-103"><span class="icon">⚙️</span>年末調整計算</a>
+      <a onclick="go('scr-104')" id="nav-104"><span class="icon">🔍</span>計算結果確認</a>
+      <div class="sidebar-section">帳票</div>
+      <a onclick="go('scr-105')" id="nav-105"><span class="icon">🖨️</span>帳票出力</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- SCR-010: 従業員ポータルトップ -->
+      <div class="screen" id="scr-emp-top">
+        <div class="page-title">マイページ</div>
+        <div class="page-subtitle">2026年度 年末調整申告書の入力・提出を行ってください</div>
+
+        <div class="alert alert-info">
+          📢 <strong>【重要】</strong> 2026年11月30日（日）までに申告書を提出してください。
+        </div>
+
+        <!-- Progress -->
+        <div class="card">
+          <div class="card-title">📝 申告書提出状況</div>
+          <div class="steps">
+            <div class="step done">
+              <div class="step-circle">✓</div>
+              <div class="step-label">扶養控除等申告書</div>
+            </div>
+            <div class="step-line done"></div>
+            <div class="step done">
+              <div class="step-circle">✓</div>
+              <div class="step-label">保険料控除申告書</div>
+            </div>
+            <div class="step-line done"></div>
+            <div class="step active">
+              <div class="step-circle">3</div>
+              <div class="step-label">住宅借入金等控除</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step todo">
+              <div class="step-circle">4</div>
+              <div class="step-label">添付書類</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step todo">
+              <div class="step-circle">5</div>
+              <div class="step-label">確認・提出</div>
+            </div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:40%"></div></div>
+          <p style="font-size:12px; color:#6a7f96; margin-top:8px;">入力進捗：40%（3/5項目）</p>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div class="card" style="cursor:pointer;" onclick="go('scr-013')">
+            <div class="card-title">🏠 住宅借入金等特別控除申告書</div>
+            <span class="badge badge-pending">未入力</span>
+            <p style="font-size:12px; color:#6a7f96; margin-top:12px;">住宅ローン控除の情報を入力してください</p>
+            <div class="btn-group"><button class="btn btn-primary btn-sm" onclick="go('scr-013')">入力する →</button></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📄 源泉徴収票</div>
+            <span class="badge badge-draft">未発行</span>
+            <p style="font-size:12px; color:#6a7f96; margin-top:12px;">年末調整確定後に発行されます</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📅 重要日程</div>
+          <table>
+            <tr><th>期間</th><th>内容</th></tr>
+            <tr><td>11月1日〜11月30日</td><td>申告書入力・提出期間</td></tr>
+            <tr><td>12月1日〜12月10日</td><td>審査・承認期間</td></tr>
+            <tr><td>12月中旬</td><td>年末調整計算・確定</td></tr>
+            <tr><td>1月中旬</td><td>源泉徴収票発行</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- SCR-011: 扶養控除等申告書 -->
+      <div class="screen" id="scr-011">
+        <div class="page-title">扶養控除等（異動）申告書</div>
+        <div class="page-subtitle">配偶者・扶養親族に関する情報を入力してください</div>
+        <div class="steps" style="margin-bottom:24px;">
+          <div class="step done"><div class="step-circle">1</div><div class="step-label">扶養控除等</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">2</div><div class="step-label">保険料控除</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">3</div><div class="step-label">住宅借入金等</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">4</div><div class="step-label">添付書類</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">5</div><div class="step-label">確認・提出</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">本人情報</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">氏名<span class="required">必須</span></label><input class="form-control" value="田中 花子" readonly></div>
+            <div class="form-group"><label class="form-label">氏名（カナ）</label><input class="form-control" value="タナカ ハナコ" readonly></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">社員番号</label><input class="form-control" value="EMP00123" readonly></div>
+            <div class="form-group"><label class="form-label">生年月日</label><input class="form-control" type="date" value="1985-04-15" readonly></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">配偶者情報</div>
+          <div class="form-group">
+            <label class="form-label">配偶者の有無<span class="required">必須</span></label>
+            <select class="form-control" style="width:200px;">
+              <option>有</option><option>無</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">配偶者氏名<span class="required">必須</span></label><input class="form-control" value="田中 太郎"></div>
+            <div class="form-group"><label class="form-label">配偶者氏名（カナ）</label><input class="form-control" value="タナカ タロウ"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">生年月日<span class="required">必須</span></label><input class="form-control" type="date" value="1983-08-22"></div>
+            <div class="form-group"><label class="form-label">年間所得見積額<span class="required">必須</span></label><input class="form-control" type="number" value="0"><div class="form-hint">48万円超の場合、配偶者控除の対象外となります</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">扶養親族</div>
+          <div class="alert alert-info">📌 16歳以上の扶養親族を入力してください</div>
+          <table>
+            <thead><tr><th>氏名</th><th>続柄</th><th>生年月日</th><th>年間所得</th><th>障害区分</th><th>同居</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>田中 一郎</td><td>子</td><td>2005/03/10</td><td>0円</td><td>なし</td><td>同居</td>
+                <td><button class="btn btn-secondary btn-sm">編集</button></td>
+              </tr>
+              <tr>
+                <td>田中 次郎</td><td>子</td><td>2008/11/25</td><td>0円</td><td>なし</td><td>同居</td>
+                <td><button class="btn btn-secondary btn-sm">編集</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="btn btn-secondary btn-sm" style="margin-top:12px;">＋ 扶養親族を追加</button>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="go('scr-emp-top')">← 戻る</button>
+          <button class="btn btn-primary" onclick="go('scr-012')">保存して次へ →</button>
+        </div>
+      </div>
+
+      <!-- SCR-012: 保険料控除申告書 -->
+      <div class="screen" id="scr-012">
+        <div class="page-title">保険料控除申告書</div>
+        <div class="page-subtitle">生命保険・地震保険等の控除情報を入力してください</div>
+        <div class="steps" style="margin-bottom:24px;">
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">扶養控除等</div></div>
+          <div class="step-line done"></div>
+          <div class="step active"><div class="step-circle">2</div><div class="step-label">保険料控除</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">3</div><div class="step-label">住宅借入金等</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">4</div><div class="step-label">添付書類</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">5</div><div class="step-label">確認・提出</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🏥 生命保険料控除（一般）</div>
+          <table>
+            <thead><tr><th>保険会社名</th><th>保険名称</th><th>被保険者</th><th>契約種別</th><th>年間保険料</th><th>控除額</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>〇〇生命保険</td><td>終身保険プラン</td><td>田中 花子</td><td>新契約</td><td>120,000円</td><td>40,000円</td>
+                <td><button class="btn btn-secondary btn-sm">編集</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="btn btn-secondary btn-sm" style="margin-top:12px;">＋ 追加</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🏥 介護医療保険料控除</div>
+          <table>
+            <thead><tr><th>保険会社名</th><th>保険名称</th><th>被保険者</th><th>年間保険料</th><th>控除額</th><th></th></tr></thead>
+            <tbody>
+              <tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">入力なし</td></tr>
+            </tbody>
+          </table>
+          <button class="btn btn-secondary btn-sm" style="margin-top:12px;">＋ 追加</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🌋 地震保険料控除</div>
+          <table>
+            <thead><tr><th>保険会社名</th><th>保険名称</th><th>保険種別</th><th>年間保険料</th><th>控除額</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>△△損害保険</td><td>地震保険</td><td>地震保険料</td><td>30,000円</td><td>30,000円</td>
+                <td><button class="btn btn-secondary btn-sm">編集</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="btn btn-secondary btn-sm" style="margin-top:12px;">＋ 追加</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">合計控除額（見込み）</div>
+          <div class="summary-box">
+            <div class="summary-row"><span>生命保険料控除（一般）</span><span class="summary-value">40,000円</span></div>
+            <div class="summary-row"><span>介護医療保険料控除</span><span class="summary-value">0円</span></div>
+            <div class="summary-row"><span>個人年金保険料控除</span><span class="summary-value">0円</span></div>
+            <div class="summary-row"><span>地震保険料控除</span><span class="summary-value">30,000円</span></div>
+            <div class="summary-row total"><span>合計控除額</span><span class="summary-value">70,000円</span></div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="go('scr-011')">← 戻る</button>
+          <button class="btn btn-primary" onclick="go('scr-013')">保存して次へ →</button>
+        </div>
+      </div>
+
+      <!-- SCR-013: 住宅借入金等特別控除申告書 -->
+      <div class="screen" id="scr-013">
+        <div class="page-title">住宅借入金等特別控除申告書</div>
+        <div class="page-subtitle">住宅ローン控除に関する情報を入力してください</div>
+        <div class="steps" style="margin-bottom:24px;">
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">扶養控除等</div></div>
+          <div class="step-line done"></div>
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">保険料控除</div></div>
+          <div class="step-line done"></div>
+          <div class="step active"><div class="step-circle">3</div><div class="step-label">住宅借入金等</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">4</div><div class="step-label">添付書類</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">5</div><div class="step-label">確認・提出</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">住宅ローン控除の適用有無</div>
+          <div class="form-group">
+            <label class="form-label">住宅借入金等特別控除の適用<span class="required">必須</span></label>
+            <select class="form-control" style="width:200px;" id="housing-select" onchange="toggleHousing()">
+              <option value="yes">適用あり</option>
+              <option value="no">適用なし</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card" id="housing-detail">
+          <div class="card-title">住宅ローン情報</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">居住開始年月日<span class="required">必須</span></label><input class="form-control" type="date" value="2020-04-01"></div>
+            <div class="form-group"><label class="form-label">控除区分<span class="required">必須</span></label>
+              <select class="form-control"><option>住宅借入金等特別控除</option><option>特定増改築等住宅借入金等特別控除</option></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">年末残高（1棟目）<span class="required">必須</span></label><input class="form-control" type="number" value="28500000"><div class="form-hint">証明書記載の年末残高を入力してください</div></div>
+            <div class="form-group"><label class="form-label">年末残高（2棟目）</label><input class="form-control" type="number" placeholder="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">住宅の取得対価（1棟目）</label><input class="form-control" type="number" value="35000000"></div>
+            <div class="form-group"><label class="form-label">控除率</label><input class="form-control" value="0.7%" readonly></div>
+          </div>
+          <div class="alert alert-success" style="margin-top:8px;">
+            ✅ 住宅借入金等特別控除額（見込み）：<strong>199,500円</strong>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="go('scr-012')">← 戻る</button>
+          <button class="btn btn-primary" onclick="go('scr-014')">保存して次へ →</button>
+        </div>
+      </div>
+
+      <!-- SCR-014: 添付書類アップロード -->
+      <div class="screen" id="scr-014">
+        <div class="page-title">添付書類アップロード</div>
+        <div class="page-subtitle">控除証明書等の書類をアップロードしてください</div>
+        <div class="steps" style="margin-bottom:24px;">
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">扶養控除等</div></div>
+          <div class="step-line done"></div>
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">保険料控除</div></div>
+          <div class="step-line done"></div>
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">住宅借入金等</div></div>
+          <div class="step-line done"></div>
+          <div class="step active"><div class="step-circle">4</div><div class="step-label">添付書類</div></div>
+          <div class="step-line"></div>
+          <div class="step todo"><div class="step-circle">5</div><div class="step-label">確認・提出</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">必要書類チェックリスト</div>
+          <table>
+            <thead><tr><th>書類名</th><th>要否</th><th>状態</th></tr></thead>
+            <tbody>
+              <tr><td>生命保険料控除証明書</td><td><span class="badge badge-submitted">必須</span></td><td><span class="badge badge-approved">✓ アップロード済み</span></td></tr>
+              <tr><td>地震保険料控除証明書</td><td><span class="badge badge-submitted">必須</span></td><td><span class="badge badge-approved">✓ アップロード済み</span></td></tr>
+              <tr><td>住宅借入金等特別控除証明書</td><td><span class="badge badge-submitted">必須</span></td><td><span class="badge badge-pending">未アップロード</span></td></tr>
+              <tr><td>住宅取得資金に係る借入金の年末残高等証明書</td><td><span class="badge badge-submitted">必須</span></td><td><span class="badge badge-pending">未アップロード</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">書類アップロード</div>
+          <div class="upload-zone" onclick="simulateUpload()">
+            <div class="upload-icon">📁</div>
+            <p style="font-weight:600; color:#3a4a5c;">クリックまたはドラッグ＆ドロップ</p>
+            <p style="font-size:12px; margin-top:4px;">対応形式：PDF / JPEG / PNG（10MB以内）</p>
+          </div>
+          <div class="upload-list">
+            <div class="upload-item">
+              <span class="file-icon">📄</span>
+              <span style="flex:1;">生命保険料控除証明書.pdf</span>
+              <span style="color:#6a7f96; font-size:12px;">245 KB</span>
+              <button class="btn btn-secondary btn-sm">削除</button>
+            </div>
+            <div class="upload-item">
+              <span class="file-icon">📄</span>
+              <span style="flex:1;">地震保険料控除証明書.pdf</span>
+              <span style="color:#6a7f96; font-size:12px;">189 KB</span>
+              <button class="btn btn-secondary btn-sm">削除</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="go('scr-013')">← 戻る</button>
+          <button class="btn btn-primary" onclick="go('scr-015')">保存して次へ →</button>
+        </div>
+      </div>
+
+      <!-- SCR-015: 確認・提出 -->
+      <div class="screen" id="scr-015">
+        <div class="page-title">申告書確認・提出</div>
+        <div class="page-subtitle">入力内容を確認して提出してください</div>
+        <div class="steps" style="margin-bottom:24px;">
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">扶養控除等</div></div>
+          <div class="step-line done"></div>
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">保険料控除</div></div>
+          <div class="step-line done"></div>
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">住宅借入金等</div></div>
+          <div class="step-line done"></div>
+          <div class="step done"><div class="step-circle">✓</div><div class="step-label">添付書類</div></div>
+          <div class="step-line done"></div>
+          <div class="step active"><div class="step-circle">5</div><div class="step-label">確認・提出</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">控除額サマリー</div>
+          <div class="summary-box">
+            <div class="summary-row"><span>給与収入合計</span><span class="summary-value">6,800,000円</span></div>
+            <div class="summary-row"><span>給与所得控除額</span><span class="summary-value">1,760,000円</span></div>
+            <div class="summary-row"><span>給与所得金額</span><span class="summary-value">5,040,000円</span></div>
+            <div class="summary-row" style="margin-top:8px;"><span>基礎控除</span><span class="summary-value">480,000円</span></div>
+            <div class="summary-row"><span>配偶者控除</span><span class="summary-value">380,000円</span></div>
+            <div class="summary-row"><span>扶養控除（一般）× 2</span><span class="summary-value">760,000円</span></div>
+            <div class="summary-row"><span>生命保険料控除</span><span class="summary-value">40,000円</span></div>
+            <div class="summary-row"><span>地震保険料控除</span><span class="summary-value">30,000円</span></div>
+            <div class="summary-row"><span>社会保険料控除</span><span class="summary-value">820,000円</span></div>
+            <div class="summary-row total"><span>所得控除合計</span><span class="summary-value">2,510,000円</span></div>
+            <div class="summary-row total"><span>課税所得金額</span><span class="summary-value">2,530,000円</span></div>
+            <div class="summary-row"><span>算出所得税額</span><span class="summary-value">205,500円</span></div>
+            <div class="summary-row"><span>住宅借入金等特別控除</span><span class="summary-value">▲ 199,500円</span></div>
+            <div class="summary-row"><span>復興特別所得税（2.1%）</span><span class="summary-value">126円</span></div>
+            <div class="summary-row total"><span>年調年税額</span><span class="summary-value">6,126円</span></div>
+            <div class="summary-row"><span>源泉徴収税額合計</span><span class="summary-value">85,200円</span></div>
+            <div class="summary-row total" style="color:#0d9488;"><span>過不足税額（還付）</span><span class="summary-value negative">▲ 79,074円</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">提出確認</div>
+          <div class="alert alert-warning">⚠️ 提出後の修正は人事担当者への申請が必要です。内容を十分ご確認ください。</div>
+          <label style="display:flex; align-items:center; gap:10px; font-size:14px; cursor:pointer;">
+            <input type="checkbox" id="confirm-check" style="width:18px; height:18px; accent-color:#1a56db;">
+            入力内容に誤りがないことを確認しました
+          </label>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="go('scr-014')">← 戻る</button>
+          <button class="btn btn-success btn-lg" onclick="submitDeclaration()">✅ 申告書を提出する</button>
+        </div>
+      </div>
+
+      <!-- SCR-016: 提出状況確認 -->
+      <div class="screen" id="scr-016">
+        <div class="page-title">提出状況確認</div>
+        <div class="page-subtitle">申告書の提出・審査状況を確認できます</div>
+
+        <div class="card">
+          <div class="card-title">現在の状況</div>
+          <div style="display:flex; align-items:center; gap:16px; padding:16px; background:#f0fdf4; border-radius:8px; border:1px solid #bbf7d0;">
+            <span style="font-size:40px;">✅</span>
+            <div>
+              <div style="font-size:18px; font-weight:800; color:#15803d;">提出済み</div>
+              <div style="font-size:13px; color:#166534; margin-top:4px;">2026年11月15日 14:32 に提出されました</div>
+            </div>
+            <span class="badge badge-submitted" style="margin-left:auto; font-size:13px; padding:6px 16px;">審査中</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">審査履歴</div>
+          <table>
+            <thead><tr><th>日時</th><th>状態</th><th>担当者</th><th>コメント</th></tr></thead>
+            <tbody>
+              <tr><td>2026/11/15 14:32</td><td><span class="badge badge-submitted">提出</span></td><td>田中 花子（本人）</td><td>—</td></tr>
+              <tr><td>2026/11/16 09:15</td><td><span class="badge badge-submitted">受付</span></td><td>人事部 鈴木 一郎</td><td>審査を開始しました</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">申告書サマリー</div>
+          <div class="summary-box">
+            <div class="summary-row"><span>扶養控除等申告書</span><span class="badge badge-approved">✓ 提出済み</span></div>
+            <div class="summary-row"><span>保険料控除申告書</span><span class="badge badge-approved">✓ 提出済み</span></div>
+            <div class="summary-row"><span>住宅借入金等特別控除申告書</span><span class="badge badge-approved">✓ 提出済み</span></div>
+            <div class="summary-row"><span>添付書類</span><span class="badge badge-approved">✓ 4件</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCR-017: 源泉徴収票 -->
+      <div class="screen" id="scr-017">
+        <div class="page-title">源泉徴収票</div>
+        <div class="page-subtitle">発行済みの源泉徴収票を確認・ダウンロードできます</div>
+
+        <div class="card">
+          <div class="card-title">発行済み源泉徴収票</div>
+          <table>
+            <thead><tr><th>年度</th><th>発行日</th><th>支払金額</th><th>源泉徴収税額</th><th>状態</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>2025年度</strong></td><td>2026/01/20</td><td>6,500,000円</td><td>78,400円</td>
+                <td><span class="badge badge-approved">発行済み</span></td>
+                <td><button class="btn btn-primary btn-sm">📄 PDF表示</button></td>
+              </tr>
+              <tr>
+                <td>2024年度</td><td>2025/01/21</td><td>6,200,000円</td><td>74,200円</td>
+                <td><span class="badge badge-approved">発行済み</span></td>
+                <td><button class="btn btn-secondary btn-sm">📄 PDF表示</button></td>
+              </tr>
+              <tr>
+                <td><strong>2026年度（今年）</strong></td><td>—</td><td>—</td><td>—</td>
+                <td><span class="badge badge-draft">未発行</span></td>
+                <td><button class="btn btn-secondary btn-sm" disabled>年末調整確定後に発行</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">2025年度 源泉徴収票（プレビュー）</div>
+          <div style="border:2px solid #1a3a5c; border-radius:8px; padding:24px; background:#fff; font-size:13px;">
+            <div style="text-align:center; font-size:16px; font-weight:800; margin-bottom:16px; color:#1a3a5c;">給与所得の源泉徴収票</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+              <div style="border:1px solid #c0cdd8; padding:10px; border-radius:4px;">
+                <div style="font-size:10px; color:#6a7f96;">支払金額</div>
+                <div style="font-weight:700; font-size:16px;">6,500,000円</div>
+              </div>
+              <div style="border:1px solid #c0cdd8; padding:10px; border-radius:4px;">
+                <div style="font-size:10px; color:#6a7f96;">給与所得控除後の金額</div>
+                <div style="font-weight:700; font-size:16px;">4,740,000円</div>
+              </div>
+              <div style="border:1px solid #c0cdd8; padding:10px; border-radius:4px;">
+                <div style="font-size:10px; color:#6a7f96;">所得控除の合計額</div>
+                <div style="font-weight:700; font-size:16px;">2,490,000円</div>
+              </div>
+              <div style="border:1px solid #1a56db; padding:10px; border-radius:4px; background:#eff6ff;">
+                <div style="font-size:10px; color:#1d4ed8;">源泉徴収税額</div>
+                <div style="font-weight:800; font-size:18px; color:#1a56db;">78,400円</div>
+              </div>
+              <div style="border:1px solid #c0cdd8; padding:10px; border-radius:4px;">
+                <div style="font-size:10px; color:#6a7f96;">社会保険料等の金額</div>
+                <div style="font-weight:700; font-size:16px;">780,000円</div>
+              </div>
+              <div style="border:1px solid #0d9488; padding:10px; border-radius:4px; background:#f0fdf4;">
+                <div style="font-size:10px; color:#0d9488;">住宅借入金等特別控除額</div>
+                <div style="font-weight:700; font-size:16px; color:#0d9488;">195,000円</div>
+              </div>
+            </div>
+            <div style="margin-top:16px; padding:12px; background:#f8fafc; border-radius:6px; font-size:12px;">
+              <strong>支払者：</strong>株式会社〇〇 　<strong>住所：</strong>東京都千代田区〇〇1-2-3
+            </div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary">⬇️ PDFダウンロード</button>
+            <button class="btn btn-secondary">🖨️ 印刷</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== ADMIN ==================== -->
+
+      <!-- SCR-100: 管理者ダッシュボード -->
+      <div class="screen" id="scr-adm-top">
+        <div class="page-title">管理者ダッシュボード</div>
+        <div class="page-subtitle">2026年度 年末調整 進捗状況</div>
+
+        <div class="stat-grid">
+          <div class="stat-card blue">
+            <div class="stat-number">247</div>
+            <div class="stat-label">対象従業員数</div>
+            <div class="stat-sub">全社員</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-number">183</div>
+            <div class="stat-label">提出済み</div>
+            <div class="stat-sub">74.1%</div>
+          </div>
+          <div class="stat-card yellow">
+            <div class="stat-number">48</div>
+            <div class="stat-label">審査中</div>
+            <div class="stat-sub">19.4%</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-number">64</div>
+            <div class="stat-label">未提出</div>
+            <div class="stat-sub">25.9%</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:20px;">
+          <div class="card">
+            <div class="card-title">部署別提出状況</div>
+            <table>
+              <thead><tr><th>部署</th><th>対象者</th><th>提出済</th><th>審査中</th><th>承認済</th><th>未提出</th><th>進捗</th></tr></thead>
+              <tbody>
+                <tr><td>営業部</td><td>72</td><td>54</td><td>12</td><td>30</td><td>18</td><td><div class="progress-bar"><div class="progress-fill" style="width:75%; background:#22c55e;"></div></div></td></tr>
+                <tr><td>開発部</td><td>65</td><td>58</td><td>20</td><td>38</td><td>7</td><td><div class="progress-bar"><div class="progress-fill" style="width:89%; background:#22c55e;"></div></div></td></tr>
+                <tr><td>管理部</td><td>38</td><td>35</td><td>10</td><td>25</td><td>3</td><td><div class="progress-bar"><div class="progress-fill" style="width:92%; background:#22c55e;"></div></div></td></tr>
+                <tr><td>経理部</td><td>22</td><td>18</td><td>5</td><td>13</td><td>4</td><td><div class="progress-bar"><div class="progress-fill" style="width:82%; background:#22c55e;"></div></div></td></tr>
+                <tr><td>人事部</td><td>15</td><td>10</td><td>1</td><td>9</td><td>5</td><td><div class="progress-bar"><div class="progress-fill" style="width:67%; background:#f59e0b;"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📅 年末調整スケジュール</div>
+            <div style="display:flex; flex-direction:column; gap:10px; font-size:12px;">
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:#0d9488; font-weight:700;">✓</span><div><div style="font-weight:600;">申告書入力期間</div><div style="color:#6a7f96;">11/1 〜 11/30</div></div></div>
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:#1a56db; font-weight:700;">▶</span><div><div style="font-weight:600; color:#1a56db;">審査・承認期間</div><div style="color:#6a7f96;">12/1 〜 12/10</div></div></div>
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:#94a3b8; font-weight:700;">○</span><div><div style="font-weight:600;">計算実行・確定</div><div style="color:#6a7f96;">12月中旬</div></div></div>
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:#94a3b8; font-weight:700;">○</span><div><div style="font-weight:600;">源泉徴収票発行</div><div style="color:#6a7f96;">1月中旬</div></div></div>
+              <div style="display:flex; gap:10px; align-items:center;"><span style="color:#94a3b8; font-weight:700;">○</span><div><div style="font-weight:600;">法定調書提出</div><div style="color:#6a7f96;">1月末日</div></div></div>
+            </div>
+            <div class="btn-group" style="margin-top:16px; flex-direction:column;">
+              <button class="btn btn-warning btn-sm" onclick="sendReminder()">📧 未提出者に催促メール送信</button>
+              <button class="btn btn-primary btn-sm" onclick="go('scr-101')">📋 申告書一覧を確認</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCR-101: 申告書一覧 -->
+      <div class="screen" id="scr-101">
+        <div class="page-title">申告書一覧</div>
+        <div class="page-subtitle">全従業員の申告書提出・審査状況を管理します</div>
+
+        <div class="card">
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+            <input class="form-control" placeholder="氏名・社員番号で検索" style="width:220px;">
+            <select class="form-control" style="width:150px;"><option>すべての状態</option><option>下書き</option><option>提出済み</option><option>審査中</option><option>承認済み</option><option>差し戻し</option></select>
+            <select class="form-control" style="width:150px;"><option>すべての部署</option><option>営業部</option><option>開発部</option><option>管理部</option></select>
+            <button class="btn btn-primary">🔍 検索</button>
+            <button class="btn btn-warning" style="margin-left:auto;" onclick="sendReminder()">📧 未提出者に催促</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th><input type="checkbox"></th><th>社員番号</th><th>氏名</th><th>部署</th><th>提出日</th><th>状態</th><th>還付/徴収見込み</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><input type="checkbox"></td><td>EMP00123</td><td>田中 花子</td><td>営業部</td><td>2026/11/15</td>
+                  <td><span class="badge badge-submitted">審査中</span></td><td style="color:#0d9488;">▲ 79,074円（還付）</td>
+                  <td><button class="btn btn-primary btn-sm" onclick="go('scr-102')">審査</button></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox"></td><td>EMP00124</td><td>鈴木 一郎</td><td>開発部</td><td>2026/11/12</td>
+                  <td><span class="badge badge-approved">承認済み</span></td><td style="color:#dc2626;">＋ 12,400円（徴収）</td>
+                  <td><button class="btn btn-secondary btn-sm" onclick="go('scr-102')">詳細</button></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox"></td><td>EMP00125</td><td>佐藤 次郎</td><td>管理部</td><td>2026/11/18</td>
+                  <td><span class="badge badge-submitted">審査中</span></td><td style="color:#0d9488;">▲ 45,200円（還付）</td>
+                  <td><button class="btn btn-primary btn-sm" onclick="go('scr-102')">審査</button></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox"></td><td>EMP00126</td><td>山田 三郎</td><td>経理部</td><td>—</td>
+                  <td><span class="badge badge-draft">未提出</span></td><td>—</td>
+                  <td><button class="btn btn-warning btn-sm">催促</button></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox"></td><td>EMP00127</td><td>伊藤 四郎</td><td>営業部</td><td>2026/11/20</td>
+                  <td><span class="badge badge-rejected">差し戻し</span></td><td>—</td>
+                  <td><button class="btn btn-secondary btn-sm" onclick="go('scr-102')">詳細</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; font-size:13px; color:#6a7f96;">
+            <span>5件中 1〜5件表示</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary btn-sm">← 前へ</button>
+              <button class="btn btn-secondary btn-sm">次へ →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCR-102: 申告書詳細・審査 -->
+      <div class="screen" id="scr-102">
+        <div class="page-title">申告書詳細・審査</div>
+        <div class="page-subtitle">EMP00123 / 田中 花子（営業部）</div>
+
+        <div style="display:flex; gap:16px; margin-bottom:20px;">
+          <span class="badge badge-submitted" style="font-size:13px; padding:6px 16px;">審査中</span>
+          <span style="font-size:13px; color:#6a7f96;">提出日: 2026/11/15 14:32</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:20px;">
+          <div>
+            <div class="card">
+              <div class="card-title">扶養控除等申告書</div>
+              <div class="summary-box">
+                <div class="summary-row"><span>配偶者</span><span>田中 太郎（年収 0円）</span></div>
+                <div class="summary-row"><span>扶養親族①</span><span>田中 一郎（子・21歳）</span></div>
+                <div class="summary-row"><span>扶養親族②</span><span>田中 次郎（子・18歳）</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">保険料控除申告書</div>
+              <div class="summary-box">
+                <div class="summary-row"><span>生命保険料控除（一般）</span><span class="summary-value">40,000円</span></div>
+                <div class="summary-row"><span>地震保険料控除</span><span class="summary-value">30,000円</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">住宅借入金等特別控除</div>
+              <div class="summary-box">
+                <div class="summary-row"><span>年末残高</span><span>28,500,000円</span></div>
+                <div class="summary-row"><span>控除額</span><span class="summary-value">199,500円</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">添付書類</div>
+              <div class="upload-list">
+                <div class="upload-item"><span class="file-icon">📄</span><span style="flex:1;">生命保険料控除証明書.pdf</span><button class="btn btn-secondary btn-sm">👁 確認</button></div>
+                <div class="upload-item"><span class="file-icon">📄</span><span style="flex:1;">地震保険料控除証明書.pdf</span><button class="btn btn-secondary btn-sm">👁 確認</button></div>
+                <div class="upload-item"><span class="file-icon">📄</span><span style="flex:1;">住宅借入金等特別控除証明書.pdf</span><button class="btn btn-secondary btn-sm">👁 確認</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <div class="card-title">計算結果（見込み）</div>
+              <div class="summary-box">
+                <div class="summary-row"><span>給与収入</span><span>6,800,000円</span></div>
+                <div class="summary-row"><span>給与所得</span><span>5,040,000円</span></div>
+                <div class="summary-row"><span>所得控除計</span><span>2,510,000円</span></div>
+                <div class="summary-row"><span>課税所得</span><span>2,530,000円</span></div>
+                <div class="summary-row"><span>年調年税額</span><span>6,126円</span></div>
+                <div class="summary-row"><span>源泉徴収計</span><span>85,200円</span></div>
+                <div class="summary-row total" style="color:#0d9488;"><span>還付額</span><span class="summary-value negative">▲ 79,074円</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">審査コメント</div>
+              <textarea class="form-control" rows="4" placeholder="差し戻し理由等を入力してください"></textarea>
+              <div class="btn-group" style="flex-direction:column; margin-top:12px;">
+                <button class="btn btn-success" onclick="approveDeclaration()">✅ 承認</button>
+                <button class="btn btn-danger" onclick="rejectDeclaration()">↩ 差し戻し</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="go('scr-101')">← 一覧に戻る</button>
+        </div>
+      </div>
+
+      <!-- SCR-103: 年末調整計算実行 -->
+      <div class="screen" id="scr-103">
+        <div class="page-title">年末調整計算実行</div>
+        <div class="page-subtitle">承認済み申告書をもとに年末調整額を一括計算します</div>
+
+        <div class="alert alert-warning">
+          ⚠️ <strong>注意：</strong>計算実行前に、すべての申告書が承認済みであることを確認してください。
+        </div>
+
+        <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="stat-card green"><div class="stat-number">235</div><div class="stat-label">承認済み</div></div>
+          <div class="stat-card yellow"><div class="stat-number">12</div><div class="stat-label">審査中（未承認）</div></div>
+          <div class="stat-card red"><div class="stat-number">0</div><div class="stat-label">計算済み</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">計算対象設定</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">対象年度</label><input class="form-control" value="2026" readonly></div>
+            <div class="form-group"><label class="form-label">計算対象</label>
+              <select class="form-control"><option>承認済みすべて（235件）</option><option>対象部署を選択</option></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">未承認申告書の扱い</label>
+            <select class="form-control" style="width:300px;"><option>スキップする（計算対象外）</option><option>エラーとして中断する</option></select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">税率テーブル確認（2026年度）</div>
+          <div class="alert alert-success">✅ 最新の税率テーブルが適用されています（更新日: 2026/10/01）</div>
+          <table style="width:auto;">
+            <thead><tr><th>課税所得</th><th>税率</th><th>控除額</th></tr></thead>
+            <tbody>
+              <tr><td>〜 1,949,000円</td><td>5%</td><td>0円</td></tr>
+              <tr><td>〜 3,299,000円</td><td>10%</td><td>97,500円</td></tr>
+              <tr><td>〜 6,949,000円</td><td>20%</td><td>427,500円</td></tr>
+              <tr><td>〜 8,999,000円</td><td>23%</td><td>636,000円</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" id="calc-progress-card" style="display:none;">
+          <div class="card-title">計算実行中...</div>
+          <div class="progress-bar" style="height:16px;"><div class="progress-fill" id="calc-progress-bar" style="width:0%;"></div></div>
+          <p style="font-size:13px; color:#6a7f96; margin-top:8px;" id="calc-progress-text">準備中...</p>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary btn-lg" onclick="runCalculation()">⚙️ 年末調整計算を実行する</button>
+        </div>
+      </div>
+
+      <!-- SCR-104: 計算結果確認 -->
+      <div class="screen" id="scr-104">
+        <div class="page-title">計算結果確認</div>
+        <div class="page-subtitle">年末調整計算結果を確認・確定します</div>
+
+        <div class="alert alert-success">
+          ✅ 2026/12/12 10:30 に計算が完了しました。235件の計算結果をご確認ください。
+        </div>
+
+        <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+          <div class="stat-card blue"><div class="stat-number">235</div><div class="stat-label">計算完了</div></div>
+          <div class="stat-card green"><div class="stat-number">198</div><div class="stat-label">還付</div><div class="stat-sub">平均 68,450円</div></div>
+          <div class="stat-card red"><div class="stat-number">37</div><div class="stat-label">徴収</div><div class="stat-sub">平均 12,800円</div></div>
+          <div class="stat-card yellow"><div class="stat-number">13,570,100円</div><div class="stat-label">還付総額</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">計算結果一覧</div>
+          <div style="display:flex; gap:12px; margin-bottom:16px;">
+            <input class="form-control" placeholder="氏名・社員番号で検索" style="width:220px;">
+            <select class="form-control" style="width:150px;"><option>すべて</option><option>還付</option><option>徴収</option></select>
+            <button class="btn btn-primary">検索</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>社員番号</th><th>氏名</th><th>給与収入</th><th>所得控除計</th><th>年調年税額</th><th>源泉徴収計</th><th>過不足額</th><th>区分</th></tr></thead>
+              <tbody>
+                <tr><td>EMP00123</td><td>田中 花子</td><td>6,800,000</td><td>2,510,000</td><td>6,126</td><td>85,200</td><td style="color:#0d9488; font-weight:700;">▲ 79,074</td><td><span class="badge badge-approved">還付</span></td></tr>
+                <tr><td>EMP00124</td><td>鈴木 一郎</td><td>5,200,000</td><td>1,850,000</td><td>94,000</td><td>81,600</td><td style="color:#dc2626; font-weight:700;">＋ 12,400</td><td><span class="badge badge-rejected">徴収</span></td></tr>
+                <tr><td>EMP00125</td><td>佐藤 次郎</td><td>7,500,000</td><td>2,200,000</td><td>158,400</td><td>203,600</td><td style="color:#0d9488; font-weight:700;">▲ 45,200</td><td><span class="badge badge-approved">還付</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">確定処理</div>
+          <div class="alert alert-warning">⚠️ 確定後は給与システムへ自動連携されます。確定前に必ず内容を確認してください。</div>
+          <div class="btn-group">
+            <button class="btn btn-secondary">📥 Excelエクスポート</button>
+            <button class="btn btn-success btn-lg" onclick="confirmResults()">✅ 計算結果を確定する</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCR-105: 帳票出力 -->
+      <div class="screen" id="scr-105">
+        <div class="page-title">帳票出力</div>
+        <div class="page-subtitle">源泉徴収票・法定調書等の帳票を出力します</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="card">
+            <div class="card-title">📄 源泉徴収票</div>
+            <p style="font-size:13px; color:#6a7f96; margin-bottom:16px;">従業員への配布用源泉徴収票を出力します</p>
+            <div class="form-group"><label class="form-label">出力対象</label>
+              <select class="form-control"><option>全従業員（235件）</option><option>部署を指定</option><option>個人を指定</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">出力形式</label>
+              <select class="form-control"><option>PDF（個別）</option><option>PDF（一括ZIP）</option></select>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" onclick="printAlert('源泉徴収票（235件）')">🖨️ 出力する</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📊 法定調書合計表</div>
+            <p style="font-size:13px; color:#6a7f96; margin-bottom:16px;">e-Tax提出用の法定調書合計表を出力します</p>
+            <div class="form-group"><label class="form-label">出力形式</label>
+              <select class="form-control"><option>e-Tax用XML</option><option>PDF（確認用）</option></select>
+            </div>
+            <div class="alert alert-success" style="font-size:12px;">✅ 計算確定済み（2026/12/12）</div>
+            <div class="btn-group">
+              <button class="btn btn-primary" onclick="printAlert('法定調書合計表')">📤 出力する</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">🏙️ 給与支払報告書</div>
+            <p style="font-size:13px; color:#6a7f96; margin-bottom:16px;">市区町村別の給与支払報告書を出力します</p>
+            <div class="form-group"><label class="form-label">出力形式</label>
+              <select class="form-control"><option>eLTAX（PCdesk形式）</option><option>PDF（確認用）</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">対象市区町村</label>
+              <select class="form-control"><option>すべて（14市区町村）</option><option>東京都千代田区</option><option>東京都新宿区</option></select>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" onclick="printAlert('給与支払報告書')">📤 出力する</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">🔗 給与システム連携</div>
+            <p style="font-size:13px; color:#6a7f96; margin-bottom:16px;">年末調整計算結果を給与システムへ連携します</p>
+            <div class="summary-box">
+              <div class="summary-row"><span>連携方式</span><span>CSVファイル（SFTP）</span></div>
+              <div class="summary-row"><span>対象件数</span><span>235件</span></div>
+              <div class="summary-row"><span>前回連携</span><span style="color:#6a7f96;">未実施</span></div>
+            </div>
+            <div class="btn-group" style="margin-top:12px;">
+              <button class="btn btn-success" onclick="printAlert('給与システム連携データ')">📡 連携実行</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">出力履歴</div>
+          <table>
+            <thead><tr><th>出力日時</th><th>帳票名</th><th>件数</th><th>担当者</th><th>ダウンロード</th></tr></thead>
+            <tbody>
+              <tr><td>2026/12/12 11:05</td><td>法定調書合計表（e-Tax XML）</td><td>1件</td><td>鈴木 一郎</td><td><button class="btn btn-secondary btn-sm">⬇️ 再取得</button></td></tr>
+              <tr><td>2026/12/12 11:30</td><td>源泉徴収票（PDF一括）</td><td>235件</td><td>鈴木 一郎</td><td><button class="btn btn-secondary btn-sm">⬇️ 再取得</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  let currentRole = 'emp';
+  let currentScreen = 'scr-login';
+
+  function loginAction() {
+    const role = document.querySelector('input[name="role"]:checked').value;
+    currentRole = role;
+    document.getElementById('scr-login').style.display = 'none';
+    document.getElementById('app-shell').style.display = 'block';
+
+    if (role === 'emp') {
+      document.getElementById('sidebar-emp').style.display = 'block';
+      document.getElementById('sidebar-adm').style.display = 'none';
+      document.getElementById('user-avatar').textContent = '田';
+      document.getElementById('user-name-display').textContent = '田中 花子';
+      go('scr-emp-top');
+    } else {
+      document.getElementById('sidebar-emp').style.display = 'none';
+      document.getElementById('sidebar-adm').style.display = 'block';
+      document.getElementById('user-avatar').textContent = '鈴';
+      document.getElementById('user-name-display').textContent = '鈴木 一郎（管理者）';
+      go('scr-adm-top');
+    }
+  }
+
+  function go(screenId) {
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+    // Show target
+    const target = document.getElementById(screenId);
+    if (target) {
+      target.classList.add('active');
+      currentScreen = screenId;
+    }
+
+    // Update sidebar active state
+    document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+    const navMap = {
+      'scr-emp-top': 'nav-emp-top',
+      'scr-011': 'nav-011',
+      'scr-012': 'nav-012',
+      'scr-013': 'nav-013',
+      'scr-014': 'nav-014',
+      'scr-015': 'nav-015',
+      'scr-016': 'nav-016',
+      'scr-017': 'nav-017',
+      'scr-adm-top': 'nav-adm-top',
+      'scr-101': 'nav-101',
+      'scr-102': 'nav-101',
+      'scr-103': 'nav-103',
+      'scr-104': 'nav-104',
+      'scr-105': 'nav-105',
+    };
+    const navId = navMap[screenId];
+    if (navId) {
+      const nav = document.getElementById(navId);
+      if (nav) nav.classList.add('active');
+    }
+
+    // Update breadcrumb
+    const labels = {
+      'scr-emp-top': 'ホーム',
+      'scr-011': '申告書入力 > 扶養控除等申告書',
+      'scr-012': '申告書入力 > 保険料控除申告書',
+      'scr-013': '申告書入力 > 住宅借入金等特別控除申告書',
+      'scr-014': '申告書入力 > 添付書類アップロード',
+      'scr-015': '申告書入力 > 確認・提出',
+      'scr-016': '確認 > 提出状況確認',
+      'scr-017': '確認 > 源泉徴収票',
+      'scr-adm-top': 'ダッシュボード',
+      'scr-101': '申告書管理 > 申告書一覧',
+      'scr-102': '申告書管理 > 申告書詳細・審査',
+      'scr-103': '年末調整 > 計算実行',
+      'scr-104': '年末調整 > 計算結果確認',
+      'scr-105': '帳票 > 帳票出力',
+    };
+    document.getElementById('breadcrumb-text').textContent = labels[screenId] || '';
+
+    // Scroll to top
+    window.scrollTo(0, 0);
+  }
+
+  function logout() {
+    document.getElementById('app-shell').style.display = 'none';
+    document.getElementById('scr-login').style.display = 'flex';
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('scr-login').classList.add('active');
+  }
+
+  function submitDeclaration() {
+    const checked = document.getElementById('confirm-check').checked;
+    if (!checked) { alert('確認チェックボックスにチェックを入れてください'); return; }
+    if (confirm('申告書を提出します。よろしいですか？')) {
+      alert('✅ 申告書を提出しました。\n審査完了まで今しばらくお待ちください。');
+      go('scr-016');
+    }
+  }
+
+  function approveDeclaration() {
+    if (confirm('この申告書を承認しますか？')) {
+      alert('✅ 承認しました。');
+      go('scr-101');
+    }
+  }
+
+  function rejectDeclaration() {
+    const comment = document.querySelector('#scr-102 textarea').value;
+    if (!comment) { alert('差し戻し理由を入力してください'); return; }
+    if (confirm('この申告書を差し戻しますか？')) {
+      alert('↩ 差し戻しました。従業員に通知されます。');
+      go('scr-101');
+    }
+  }
+
+  function sendReminder() {
+    if (confirm('未提出者64名に催促メールを送信しますか？')) {
+      alert('📧 64名に催促メールを送信しました。');
+    }
+  }
+
+  function toggleHousing() {
+    const val = document.getElementById('housing-select').value;
+    document.getElementById('housing-detail').style.display = val === 'yes' ? 'block' : 'none';
+  }
+
+  function simulateUpload() {
+    alert('📁 ファイル選択ダイアログ（モックアップ）');
+  }
+
+  function runCalculation() {
+    if (!confirm('235件の年末調整計算を実行します。よろしいですか？')) return;
+    const card = document.getElementById('calc-progress-card');
+    const bar = document.getElementById('calc-progress-bar');
+    const text = document.getElementById('calc-progress-text');
+    card.style.display = 'block';
+    let pct = 0;
+    const messages = ['税率テーブル読み込み中...', '扶養控除計算中...', '保険料控除計算中...', '所得税計算中...', '過不足額計算中...', '計算完了！'];
+    const iv = setInterval(() => {
+      pct += 20;
+      bar.style.width = pct + '%';
+      text.textContent = messages[Math.floor(pct / 20) - 1] || '処理中...';
+      if (pct >= 100) {
+        clearInterval(iv);
+        setTimeout(() => {
+          alert('✅ 年末調整計算が完了しました。235件の計算結果を確認してください。');
+          go('scr-104');
+        }, 500);
+      }
+    }, 400);
+  }
+
+  function confirmResults() {
+    if (confirm('計算結果を確定し、給与システムへ連携データを出力しますか？')) {
+      alert('✅ 計算結果を確定しました。\n給与システム連携データを出力します。');
+      go('scr-105');
+    }
+  }
+
+  function printAlert(name) {
+    alert('🖨️ 「' + name + '」の出力処理を開始します。\n（モックアップのためダウンロードは行われません）');
+  }
+</script>
+</body>
+</html>
