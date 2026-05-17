@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>年末調整システム</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #1a3a5c;
+      color: #fff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 18px; font-weight: 700; }
+    header span { font-size: 12px; background: rgba(255,255,255,.2); padding: 4px 12px; border-radius: 12px; }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    .login-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.1);
+    }
+
+    .login-card .icon { font-size: 48px; text-align: center; margin-bottom: 8px; }
+    .login-card h2 { font-size: 20px; font-weight: 800; color: #1a3a5c; text-align: center; margin-bottom: 4px; }
+    .login-card .year { font-size: 13px; color: #6a7f96; text-align: center; margin-bottom: 28px; }
+
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: #3a4a5c; margin-bottom: 6px; }
+    .field input {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #c0cdd8; border-radius: 8px;
+      font-size: 14px; outline: none; transition: border .15s;
+    }
+    .field input:focus { border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+
+    .role-select {
+      display: flex; gap: 10px; margin-bottom: 20px;
+    }
+    .role-select label {
+      flex: 1; display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border: 2px solid #e0e6ed; border-radius: 8px;
+      cursor: pointer; font-size: 13px; font-weight: 600; color: #3a4a5c;
+      transition: all .15s;
+    }
+    .role-select input[type=radio] { accent-color: #1a56db; }
+    .role-select label:has(input:checked) {
+      border-color: #1a56db; background: #eff6ff; color: #1a56db;
+    }
+
+    .btn-login {
+      width: 100%; padding: 13px;
+      background: #1a56db; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-login:hover { background: #1446b5; }
+    .btn-login:active { background: #0f3a99; }
+
+    .error-msg {
+      background: #fef2f2; color: #dc2626;
+      border: 1px solid #fca5a5; border-radius: 6px;
+      padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
+      display: none;
+    }
+
+    .forgot { text-align: center; margin-top: 16px; font-size: 12px; color: #6a7f96; }
+    .forgot a { color: #1a56db; text-decoration: none; }
+
+    footer {
+      background: #1a3a5c; color: rgba(255,255,255,.5);
+      text-align: center; padding: 14px;
+      font-size: 12px;
+    }
+
+    /* ── ログイン後ページ ── */
+    .portal {
+      display: none;
+      width: 100%;
+      max-width: 720px;
+    }
+    .portal-header {
+      background: #fff; border-radius: 12px;
+      padding: 24px 28px; margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .portal-header .greeting h2 { font-size: 18px; font-weight: 800; color: #1a3a5c; }
+    .portal-header .greeting p { font-size: 13px; color: #6a7f96; margin-top: 4px; }
+    .portal-header .logout-btn {
+      background: #f0f4f8; border: none; padding: 8px 16px;
+      border-radius: 8px; cursor: pointer; font-size: 13px; color: #3a4a5c;
+    }
+
+    .alert {
+      background: #fffbeb; border: 1px solid #fbbf24;
+      border-left: 4px solid #f59e0b;
+      border-radius: 8px; padding: 12px 16px;
+      font-size: 13px; color: #92400e; margin-bottom: 16px;
+    }
+
+    .card {
+      background: #fff; border-radius: 12px;
+      padding: 24px 28px; margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    }
+    .card h3 { font-size: 15px; font-weight: 700; color: #1a3a5c; margin-bottom: 16px; }
+
+    .progress-wrap { margin-bottom: 8px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    .progress-bar { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #1a56db; border-radius: 5px; transition: width .5s; }
+
+    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .menu-item {
+      border: 1.5px solid #e0e6ed; border-radius: 10px;
+      padding: 18px 16px; cursor: pointer;
+      transition: all .15s; text-decoration: none; color: inherit;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .menu-item:hover { border-color: #1a56db; background: #f5f8ff; }
+    .menu-item .menu-icon { font-size: 24px; }
+    .menu-item .menu-title { font-size: 14px; font-weight: 700; color: #1a3a5c; }
+    .menu-item .menu-desc { font-size: 12px; color: #6a7f96; }
+    .menu-item .menu-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; width: fit-content; }
+    .status-done { background: #dcfce7; color: #15803d; }
+    .status-todo { background: #fef3c7; color: #92400e; }
+    .status-na   { background: #f1f5f9; color: #64748b; }
+
+    @media (max-width: 500px) {
+      .login-card { padding: 28px 20px; }
+      .menu-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📋 年末調整システム</h1>
+  <span>2026年度（令和8年度）</span>
+</header>
+
+<main>
+
+  <!-- ログインフォーム -->
+  <div class="login-card" id="login-section">
+    <div class="icon">📋</div>
+    <h2>年末調整システム</h2>
+    <p class="year">2026年度（令和8年度）にログイン</p>
+
+    <div class="role-select">
+      <label><input type="radio" name="role" value="emp" checked> 👤 従業員</label>
+      <label><input type="radio" name="role" value="adm"> 🔑 管理者</label>
+    </div>
+
+    <div class="field">
+      <label>社員番号 / 管理者ID</label>
+      <input type="text" id="input-id" placeholder="例: EMP00123" value="EMP00123">
+    </div>
+    <div class="field">
+      <label>パスワード</label>
+      <input type="password" id="input-pass" placeholder="パスワードを入力" value="password">
+    </div>
+
+    <div class="error-msg" id="error-msg">社員番号またはパスワードが正しくありません。</div>
+
+    <button class="btn-login" onclick="login()">ログイン</button>
+
+    <p class="forgot"><a href="#">パスワードをお忘れの方</a></p>
+  </div>
+
+  <!-- ログイン後ポータル -->
+  <div class="portal" id="portal-section">
+    <div class="portal-header">
+      <div class="greeting">
+        <h2 id="greeting-name">田中 花子 さん</h2>
+        <p>2026年度 年末調整へようこそ</p>
+      </div>
+      <button class="logout-btn" onclick="logout()">ログアウト</button>
+    </div>
+
+    <div class="alert" id="portal-alert">
+      ⚠️ <strong>提出期限：2026年11月30日（日）</strong> までに申告書を提出してください。
+    </div>
+
+    <div class="card">
+      <h3>📊 入力進捗</h3>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="progress-text">入力中...</span><span id="progress-pct">40%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:40%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📝 申告書メニュー</h3>
+      <div class="menu-grid" id="menu-grid">
+        <!-- JSで生成 -->
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  © 2026 年末調整システム　|　お問い合わせ：人事部 内線 1234
+</footer>
+
+<script>
+  const EMP_MENUS = [
+    { icon: '👨‍👩‍👧', title: '扶養控除等申告書', desc: '配偶者・扶養親族の情報', status: 'done', label: '入力済み' },
+    { icon: '🏥', title: '保険料控除申告書', desc: '生命保険・地震保険等', status: 'done', label: '入力済み' },
+    { icon: '🏠', title: '住宅借入金等特別控除', desc: '住宅ローン控除', status: 'todo', label: '未入力' },
+    { icon: '📎', title: '添付書類アップロード', desc: '控除証明書等', status: 'todo', label: '未アップロード' },
+    { icon: '✅', title: '確認・提出', desc: '内容確認して提出', status: 'na', label: '2/4項目完了' },
+    { icon: '📄', title: '源泉徴収票', desc: '発行後にダウンロード可能', status: 'na', label: '未発行' },
+  ];
+
+  const ADM_MENUS = [
+    { icon: '📊', title: 'ダッシュボード', desc: '提出状況の概要', status: 'done', label: '確認可能' },
+    { icon: '📋', title: '申告書一覧・審査', desc: '従業員の申告書を審査', status: 'todo', label: '48件審査待ち' },
+    { icon: '⚙️', title: '年末調整計算', desc: '一括計算の実行', status: 'na', label: '12月中旬予定' },
+    { icon: '🖨️', title: '帳票出力', desc: '源泉徴収票・法定調書等', status: 'na', label: '計算確定後' },
+  ];
+
+  function login() {
+    const id = document.getElementById('input-id').value.trim();
+    const pass = document.getElementById('input-pass').value.trim();
+    const role = document.querySelector('input[name="role"]:checked').value;
+    const err = document.getElementById('error-msg');
+
+    if (!id || !pass) {
+      err.style.display = 'block';
+      err.textContent = '社員番号とパスワードを入力してください。';
+      return;
+    }
+    err.style.display = 'none';
+
+    document.getElementById('login-section').style.display = 'none';
+    const portal = document.getElementById('portal-section');
+    portal.style.display = 'block';
+
+    if (role === 'emp') {
+      document.getElementById('greeting-name').textContent = '田中 花子 さん';
+      document.getElementById('progress-text').textContent = '申告書入力中（2/4項目完了）';
+      document.getElementById('progress-pct').textContent = '50%';
+      document.getElementById('progress-fill').style.width = '50%';
+      document.getElementById('portal-alert').innerHTML =
+        '⚠️ <strong>提出期限：2026年11月30日（日）</strong> までに申告書を提出してください。';
+      renderMenus(EMP_MENUS);
+    } else {
+      document.getElementById('greeting-name').textContent = '鈴木 一郎（管理者）さん';
+      document.getElementById('progress-text').textContent = '提出率 74.1%（183/247名）';
+      document.getElementById('progress-pct').textContent = '74%';
+      document.getElementById('progress-fill').style.width = '74%';
+      document.getElementById('portal-alert').innerHTML =
+        '📢 <strong>未提出者64名</strong> に催促メールの送信を推奨します。';
+      renderMenus(ADM_MENUS);
+    }
+  }
+
+  function renderMenus(menus) {
+    const grid = document.getElementById('menu-grid');
+    grid.innerHTML = menus.map(m => `
+      <div class="menu-item">
+        <div class="menu-icon">${m.icon}</div>
+        <div class="menu-title">${m.title}</div>
+        <div class="menu-desc">${m.desc}</div>
+        <div class="menu-status status-${m.status}">${m.label}</div>
+      </div>
+    `).join('');
+  }
+
+  function logout() {
+    document.getElementById('portal-section').style.display = 'none';
+    document.getElementById('login-section').style.display = 'block';
+  }
+</script>
+</body>
+</html>
