@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ER図 — 年末調整システム</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+    }
+    header {
+      background: #1a3a5c;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 17px; font-weight: 700; }
+    header span { font-size: 12px; background: rgba(255,255,255,.2); padding: 3px 12px; border-radius: 12px; }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    .page-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #1a3a5c;
+      margin-bottom: 6px;
+    }
+    .page-sub {
+      font-size: 13px;
+      color: #6a7f96;
+      margin-bottom: 24px;
+    }
+
+    /* テーブル凡例 */
+    .legend {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #3a4a5c;
+    }
+    .legend-dot {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+    }
+
+    /* ER図エリア */
+    .diagram-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.08);
+      padding: 24px;
+      overflow-x: auto;
+      margin-bottom: 24px;
+    }
+
+    .mermaid {
+      min-width: 900px;
+    }
+
+    /* テーブル詳細 */
+    .tables-section h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1a3a5c;
+      margin-bottom: 16px;
+    }
+
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 16px;
+    }
+
+    .table-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      overflow: hidden;
+    }
+
+    .table-header {
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-header .table-icon { font-size: 18px; }
+
+    .col-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .col-table th {
+      background: #f8fafc;
+      padding: 7px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #6a7f96;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .col-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #3a4a5c;
+      vertical-align: middle;
+    }
+    .col-table tr:last-child td { border-bottom: none; }
+    .col-table tr:hover td { background: #f8fafc; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .badge-pk  { background: #fef3c7; color: #92400e; }
+    .badge-fk  { background: #dbeafe; color: #1e40af; }
+    .badge-uk  { background: #d1fae5; color: #065f46; }
+    .badge-nn  { background: #f3f4f6; color: #374151; }
+
+    .type-chip {
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 11px;
+      color: #7c3aed;
+      background: #f5f3ff;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .rel-section {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+    .rel-section h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1a3a5c;
+      margin-bottom: 14px;
+    }
+    .rel-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .rel-table th {
+      background: #f8fafc;
+      padding: 8px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: #6a7f96;
+      text-transform: uppercase;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .rel-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #3a4a5c;
+    }
+    .rel-table tr:last-child td { border-bottom: none; }
+    .rel-table tr:hover td { background: #f8fafc; }
+
+    .arrow { color: #1a56db; font-weight: 700; }
+    .card-name {
+      font-family: monospace;
+      font-size: 12px;
+      background: #f0f4f8;
+      padding: 2px 7px;
+      border-radius: 4px;
+      color: #1a3a5c;
+    }
+
+    footer {
+      background: #1a3a5c;
+      color: rgba(255,255,255,.5);
+      text-align: center;
+      padding: 14px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .tables-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📋 年末調整システム</h1>
+  <span>ER図 / データベース設計</span>
+</header>
+
+<div class="container">
+  <p class="page-title">ER図（エンティティ関係図）</p>
+  <p class="page-sub">年末調整システム — PostgreSQL 15 データベース設計（8テーブル）</p>
+
+  <!-- 凡例 -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#fef3c7;border:1px solid #fbbf24"></div>PK — 主キー</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#dbeafe;border:1px solid #93c5fd"></div>FK — 外部キー</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#d1fae5;border:1px solid #6ee7b7"></div>UK — ユニーク制約</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f3f4f6;border:1px solid #d1d5db"></div>NOT NULL</div>
+  </div>
+
+  <!-- Mermaid ER図 -->
+  <div class="diagram-card">
+    <div class="mermaid">
+erDiagram
+    departments {
+        bigserial id PK
+        varchar name
+        varchar code
+    }
+
+    employees {
+        bigserial id PK
+        varchar employee_code UK
+        varchar last_name
+        varchar first_name
+        varchar last_name_kana
+        varchar first_name_kana
+        date birth_date
+        date joined_date
+        bigint department_id FK
+        varchar email UK
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    tax_adjustment_declarations {
+        bigserial id PK
+        bigint employee_id FK
+        smallint fiscal_year
+        varchar status
+        timestamptz submitted_at
+        timestamptz approved_at
+        bigint approved_by FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    dependents {
+        bigserial id PK
+        bigint declaration_id FK
+        varchar relation_type
+        varchar last_name
+        varchar first_name
+        date birth_date
+        decimal annual_income
+        varchar disability_type
+        boolean is_living_together
+    }
+
+    insurance_deductions {
+        bigserial id PK
+        bigint declaration_id FK
+        varchar insurance_type
+        varchar insurance_company
+        varchar policy_name
+        varchar insured_person
+        decimal payment_amount
+        decimal deduction_amount
+    }
+
+    housing_deductions {
+        bigserial id PK
+        bigint declaration_id FK
+        date residence_start_date
+        varchar deduction_type
+        decimal loan_balance_1
+        decimal loan_balance_2
+        decimal deduction_amount
+    }
+
+    attachments {
+        bigserial id PK
+        bigint declaration_id FK
+        varchar file_name
+        varchar file_type
+        varchar storage_path
+        integer file_size
+        timestamptz uploaded_at
+    }
+
+    tax_adjustment_results {
+        bigserial id PK
+        bigint declaration_id FK
+        decimal total_salary
+        decimal salary_income
+        decimal total_deductions
+        decimal taxable_income
+        decimal calculated_tax
+        decimal special_tax_credit
+        decimal final_tax
+        decimal withheld_tax
+        decimal refund_or_collection
+        timestamptz calculated_at
+    }
+
+    departments ||--o{ employees : "所属"
+    employees ||--o{ tax_adjustment_declarations : "申告"
+    employees ||--o{ tax_adjustment_declarations : "承認"
+    tax_adjustment_declarations ||--o{ dependents : "扶養"
+    tax_adjustment_declarations ||--o{ insurance_deductions : "保険控除"
+    tax_adjustment_declarations ||--o| housing_deductions : "住宅控除"
+    tax_adjustment_declarations ||--o{ attachments : "添付"
+    tax_adjustment_declarations ||--o| tax_adjustment_results : "計算結果"
+    </div>
+  </div>
+
+  <!-- リレーション一覧 -->
+  <div class="rel-section">
+    <h2>🔗 テーブル間リレーション</h2>
+    <table class="rel-table">
+      <thead>
+        <tr>
+          <th>親テーブル</th>
+          <th>カーディナリティ</th>
+          <th>子テーブル</th>
+          <th>結合キー</th>
+          <th>説明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="card-name">departments</span></td>
+          <td><span class="arrow">1 ──&lt; N</span></td>
+          <td><span class="card-name">employees</span></td>
+          <td>department_id → id</td>
+          <td>部署に複数の従業員が所属</td>
+        </tr>
+        <tr>
+          <td><span class="card-name">employees</span></td>
+          <td><span class="arrow">1 ──&lt; N</span></td>
+          <td><span class="card-name">tax_adjustment_declarations</span></td>
+          <td>employee_id → id</td>
+          <td>従業員は年度ごとに申告書を提出</td>
+        </tr>
+        <tr>
+          <td><span class="card-name">employees</span></td>
+          <td><span class="arrow">1 ──&lt; N</span></td>
+          <td><span class="card-name">tax_adjustment_declarations</span></td>
+          <td>approved_by → id</td>
+          <td>管理者による承認（自己参照的FK）</td>
+        </tr>
+        <tr>
+          <td><span class="card-name">tax_adjustment_declarations</span></td>
+          <td><span class="arrow">1 ──&lt; N</span></td>
+          <td><span class="card-name">dependents</span></td>
+          <td>declaration_id → id</td>
+          <td>申告書1件に複数の扶養親族</td>
+        </tr>
+        <tr>
+          <td><span class="card-name">tax_adjustment_declarations</span></td>
+          <td><span class="arrow">1 ──&lt; N</span></td>
+          <td><span class="card-name">insurance_deductions</span></td>
+          <td>declaration_id → id</td>
+          <td>申告書1件に複数の保険料控除</td>
+        </tr>
+        <tr>
+          <td><span class="card-name">tax_adjustment_declarations</span></td>
+          <td><span class="arrow">1 ──0/1</span></td>
+          <td><span class="card-name">housing_deductions</span></td>
+          <td>declaration_id → id</td>
+          <td>住宅ローン控除（任意・1件のみ）</td>
+        </tr>
+        <tr>
+          <td><span class="card-name">tax_adjustment_declarations</span></td>
+          <td><span class="arrow">1 ──&lt; N</span></td>
+          <td><span class="card-name">attachments</span></td>
+          <td>declaration_id → id</td>
+          <td>申告書1件に複数の添付書類</td>
+        </tr>
+        <tr>
+          <td><span class="card-name">tax_adjustment_declarations</span></td>
+          <td><span class="arrow">1 ──0/1</span></td>
+          <td><span class="card-name">tax_adjustment_results</span></td>
+          <td>declaration_id → id</td>
+          <td>計算確定後に1件の計算結果</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- テーブル詳細 -->
+  <div class="tables-section">
+    <h2>📄 テーブル定義詳細</h2>
+    <div class="tables-grid">
+
+      <!-- departments -->
+      <div class="table-card">
+        <div class="table-header" style="background:#1a3a5c;">
+          <span class="table-icon">🏢</span> departments（部署）
+        </div>
+        <table class="col-table">
+          <thead><tr><th>カラム名</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td><span class="type-chip">bigserial</span></td><td><span class="badge badge-pk">PK</span></td><td>部署ID</td></tr>
+            <tr><td>name</td><td><span class="type-chip">varchar(100)</span></td><td><span class="badge badge-nn">NN</span></td><td>部署名</td></tr>
+            <tr><td>code</td><td><span class="type-chip">varchar(20)</span></td><td><span class="badge badge-uk">UK</span></td><td>部署コード</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- employees -->
+      <div class="table-card">
+        <div class="table-header" style="background:#1e40af;">
+          <span class="table-icon">👤</span> employees（従業員）
+        </div>
+        <table class="col-table">
+          <thead><tr><th>カラム名</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td><span class="type-chip">bigserial</span></td><td><span class="badge badge-pk">PK</span></td><td>従業員ID</td></tr>
+            <tr><td>employee_code</td><td><span class="type-chip">varchar(20)</span></td><td><span class="badge badge-uk">UK</span></td><td>社員番号</td></tr>
+            <tr><td>last_name</td><td><span class="type-chip">varchar(50)</span></td><td><span class="badge badge-nn">NN</span></td><td>姓</td></tr>
+            <tr><td>first_name</td><td><span class="type-chip">varchar(50)</span></td><td><span class="badge badge-nn">NN</span></td><td>名</td></tr>
+            <tr><td>last_name_kana</td><td><span class="type-chip">varchar(100)</span></td><td></td><td>セイ（フリガナ）</td></tr>
+            <tr><td>first_name_kana</td><td><span class="type-chip">varchar(100)</span></td><td></td><td>メイ（フリガナ）</td></tr>
+            <tr><td>birth_date</td><td><span class="type-chip">date</span></td><td><span class="badge badge-nn">NN</span></td><td>生年月日</td></tr>
+            <tr><td>joined_date</td><td><span class="type-chip">date</span></td><td><span class="badge badge-nn">NN</span></td><td>入社日</td></tr>
+            <tr><td>department_id</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span></td><td>部署ID</td></tr>
+            <tr><td>email</td><td><span class="type-chip">varchar(255)</span></td><td><span class="badge badge-uk">UK</span></td><td>メールアドレス</td></tr>
+            <tr><td>is_active</td><td><span class="type-chip">boolean</span></td><td><span class="badge badge-nn">NN</span></td><td>有効フラグ</td></tr>
+            <tr><td>created_at</td><td><span class="type-chip">timestamptz</span></td><td><span class="badge badge-nn">NN</span></td><td>作成日時</td></tr>
+            <tr><td>updated_at</td><td><span class="type-chip">timestamptz</span></td><td><span class="badge badge-nn">NN</span></td><td>更新日時</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- tax_adjustment_declarations -->
+      <div class="table-card">
+        <div class="table-header" style="background:#065f46;">
+          <span class="table-icon">📋</span> tax_adjustment_declarations（年末調整申告書）
+        </div>
+        <table class="col-table">
+          <thead><tr><th>カラム名</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td><span class="type-chip">bigserial</span></td><td><span class="badge badge-pk">PK</span></td><td>申告書ID</td></tr>
+            <tr><td>employee_id</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span></td><td>従業員ID</td></tr>
+            <tr><td>fiscal_year</td><td><span class="type-chip">smallint</span></td><td><span class="badge badge-nn">NN</span></td><td>対象年度（例: 2026）</td></tr>
+            <tr><td>status</td><td><span class="type-chip">varchar(20)</span></td><td><span class="badge badge-nn">NN</span></td><td>ステータス</td></tr>
+            <tr><td>submitted_at</td><td><span class="type-chip">timestamptz</span></td><td></td><td>提出日時</td></tr>
+            <tr><td>approved_at</td><td><span class="type-chip">timestamptz</span></td><td></td><td>承認日時</td></tr>
+            <tr><td>approved_by</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span></td><td>承認者ID</td></tr>
+            <tr><td>created_at</td><td><span class="type-chip">timestamptz</span></td><td><span class="badge badge-nn">NN</span></td><td>作成日時</td></tr>
+            <tr><td>updated_at</td><td><span class="type-chip">timestamptz</span></td><td><span class="badge badge-nn">NN</span></td><td>更新日時</td></tr>
+          </tbody>
+        </table>
+        <div style="padding:8px 12px;background:#f0fdf4;font-size:11px;color:#065f46;">
+          ステータス値: draft / submitted / under_review / approved / rejected / calculated
+        </div>
+      </div>
+
+      <!-- dependents -->
+      <div class="table-card">
+        <div class="table-header" style="background:#7c3aed;">
+          <span class="table-icon">👨‍👩‍👧</span> dependents（扶養親族）
+        </div>
+        <table class="col-table">
+          <thead><tr><th>カラム名</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td><span class="type-chip">bigserial</span></td><td><span class="badge badge-pk">PK</span></td><td>扶養親族ID</td></tr>
+            <tr><td>declaration_id</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span></td><td>申告書ID</td></tr>
+            <tr><td>relation_type</td><td><span class="type-chip">varchar(20)</span></td><td><span class="badge badge-nn">NN</span></td><td>続柄</td></tr>
+            <tr><td>last_name</td><td><span class="type-chip">varchar(50)</span></td><td><span class="badge badge-nn">NN</span></td><td>姓</td></tr>
+            <tr><td>first_name</td><td><span class="type-chip">varchar(50)</span></td><td><span class="badge badge-nn">NN</span></td><td>名</td></tr>
+            <tr><td>birth_date</td><td><span class="type-chip">date</span></td><td><span class="badge badge-nn">NN</span></td><td>生年月日</td></tr>
+            <tr><td>annual_income</td><td><span class="type-chip">decimal(12,2)</span></td><td></td><td>年間所得</td></tr>
+            <tr><td>disability_type</td><td><span class="type-chip">varchar(20)</span></td><td></td><td>障害者区分</td></tr>
+            <tr><td>is_living_together</td><td><span class="type-chip">boolean</span></td><td><span class="badge badge-nn">NN</span></td><td>同居フラグ</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- insurance_deductions -->
+      <div class="table-card">
+        <div class="table-header" style="background:#b45309;">
+          <span class="table-icon">🏥</span> insurance_deductions（保険料控除）
+        </div>
+        <table class="col-table">
+          <thead><tr><th>カラム名</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td><span class="type-chip">bigserial</span></td><td><span class="badge badge-pk">PK</span></td><td>保険控除ID</td></tr>
+            <tr><td>declaration_id</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span></td><td>申告書ID</td></tr>
+            <tr><td>insurance_type</td><td><span class="type-chip">varchar(30)</span></td><td><span class="badge badge-nn">NN</span></td><td>保険種別</td></tr>
+            <tr><td>insurance_company</td><td><span class="type-chip">varchar(100)</span></td><td><span class="badge badge-nn">NN</span></td><td>保険会社名</td></tr>
+            <tr><td>policy_name</td><td><span class="type-chip">varchar(100)</span></td><td></td><td>保険名称</td></tr>
+            <tr><td>insured_person</td><td><span class="type-chip">varchar(50)</span></td><td></td><td>被保険者名</td></tr>
+            <tr><td>payment_amount</td><td><span class="type-chip">decimal(12,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>支払保険料</td></tr>
+            <tr><td>deduction_amount</td><td><span class="type-chip">decimal(12,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>控除額（計算後）</td></tr>
+          </tbody>
+        </table>
+        <div style="padding:8px 12px;background:#fffbeb;font-size:11px;color:#92400e;">
+          insurance_type: life_new / life_old / pension_new / pension_old / earthquake
+        </div>
+      </div>
+
+      <!-- housing_deductions -->
+      <div class="table-card">
+        <div class="table-header" style="background:#0f766e;">
+          <span class="table-icon">🏠</span> housing_deductions（住宅借入金等特別控除）
+        </div>
+        <table class="col-table">
+          <thead><tr><th>カラム名</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td><span class="type-chip">bigserial</span></td><td><span class="badge badge-pk">PK</span></td><td>住宅控除ID</td></tr>
+            <tr><td>declaration_id</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span> <span class="badge badge-uk">UK</span></td><td>申告書ID（1件のみ）</td></tr>
+            <tr><td>residence_start_date</td><td><span class="type-chip">date</span></td><td><span class="badge badge-nn">NN</span></td><td>居住開始年月日</td></tr>
+            <tr><td>deduction_type</td><td><span class="type-chip">varchar(30)</span></td><td><span class="badge badge-nn">NN</span></td><td>控除区分</td></tr>
+            <tr><td>loan_balance_1</td><td><span class="type-chip">decimal(14,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>年末残高①</td></tr>
+            <tr><td>loan_balance_2</td><td><span class="type-chip">decimal(14,2)</span></td><td></td><td>年末残高②</td></tr>
+            <tr><td>deduction_amount</td><td><span class="type-chip">decimal(12,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>控除額（計算後）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- attachments -->
+      <div class="table-card">
+        <div class="table-header" style="background:#1d4ed8;">
+          <span class="table-icon">📎</span> attachments（添付書類）
+        </div>
+        <table class="col-table">
+          <thead><tr><th>カラム名</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td><span class="type-chip">bigserial</span></td><td><span class="badge badge-pk">PK</span></td><td>添付書類ID</td></tr>
+            <tr><td>declaration_id</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span></td><td>申告書ID</td></tr>
+            <tr><td>file_name</td><td><span class="type-chip">varchar(255)</span></td><td><span class="badge badge-nn">NN</span></td><td>ファイル名</td></tr>
+            <tr><td>file_type</td><td><span class="type-chip">varchar(50)</span></td><td><span class="badge badge-nn">NN</span></td><td>ファイル種別</td></tr>
+            <tr><td>storage_path</td><td><span class="type-chip">varchar(512)</span></td><td><span class="badge badge-nn">NN</span></td><td>S3/MinIOパス</td></tr>
+            <tr><td>file_size</td><td><span class="type-chip">integer</span></td><td><span class="badge badge-nn">NN</span></td><td>ファイルサイズ（バイト）</td></tr>
+            <tr><td>uploaded_at</td><td><span class="type-chip">timestamptz</span></td><td><span class="badge badge-nn">NN</span></td><td>アップロード日時</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- tax_adjustment_results -->
+      <div class="table-card">
+        <div class="table-header" style="background:#be185d;">
+          <span class="table-icon">🧮</span> tax_adjustment_results（年末調整計算結果）
+        </div>
+        <table class="col-table">
+          <thead><tr><th>カラム名</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td><span class="type-chip">bigserial</span></td><td><span class="badge badge-pk">PK</span></td><td>計算結果ID</td></tr>
+            <tr><td>declaration_id</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span> <span class="badge badge-uk">UK</span></td><td>申告書ID（1件のみ）</td></tr>
+            <tr><td>total_salary</td><td><span class="type-chip">decimal(14,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>給与収入合計</td></tr>
+            <tr><td>salary_income</td><td><span class="type-chip">decimal(14,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>給与所得金額</td></tr>
+            <tr><td>total_deductions</td><td><span class="type-chip">decimal(14,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>所得控除合計</td></tr>
+            <tr><td>taxable_income</td><td><span class="type-chip">decimal(14,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>課税所得金額</td></tr>
+            <tr><td>calculated_tax</td><td><span class="type-chip">decimal(12,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>算出所得税額</td></tr>
+            <tr><td>special_tax_credit</td><td><span class="type-chip">decimal(12,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>住宅借入金等特別控除額</td></tr>
+            <tr><td>final_tax</td><td><span class="type-chip">decimal(12,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>年調年税額（復興税含む）</td></tr>
+            <tr><td>withheld_tax</td><td><span class="type-chip">decimal(12,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>源泉徴収税額合計</td></tr>
+            <tr><td>refund_or_collection</td><td><span class="type-chip">decimal(12,2)</span></td><td><span class="badge badge-nn">NN</span></td><td>還付（+）／追徴（−）額</td></tr>
+            <tr><td>calculated_at</td><td><span class="type-chip">timestamptz</span></td><td><span class="badge badge-nn">NN</span></td><td>計算実行日時</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /tables-grid -->
+  </div><!-- /tables-section -->
+</div><!-- /container -->
+
+<footer>
+  © 2026 年末調整システム　|　DB設計書 v1.0　|　PostgreSQL 15
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    er: {
+      diagramPadding: 20,
+      layoutDirection: 'TB',
+      minEntityWidth: 100,
+      minEntityHeight: 75,
+      entityPadding: 15,
+      useMaxWidth: true
+    }
+  });
+</script>
+</body>
+</html>
