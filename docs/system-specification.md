@@ -361,7 +361,105 @@
 
 ---
 
-## 10. 改訂履歴
+## 10. プロジェクトフォルダ構成
+
+```
+year-end-tax-adjustment/
+│
+├── frontend/                          # フロントエンド（React / TypeScript）
+│   ├── src/
+│   │   ├── components/                # 共通UIコンポーネント
+│   │   │   ├── common/                # Button, Form, Modal, Table, Badge
+│   │   │   └── layout/                # Header, Sidebar, PageLayout
+│   │   ├── features/                  # 機能単位モジュール
+│   │   │   ├── auth/                  # 認証（SCR-001）
+│   │   │   ├── employee/              # 従業員向け画面（SCR-010〜017）
+│   │   │   │   ├── portal/            # SCR-010: ポータルトップ
+│   │   │   │   ├── dependent/         # SCR-011: 扶養控除等申告書
+│   │   │   │   ├── insurance/         # SCR-012: 保険料控除申告書
+│   │   │   │   ├── housing/           # SCR-013: 住宅借入金等特別控除申告書
+│   │   │   │   ├── attachment/        # SCR-014: 添付書類アップロード
+│   │   │   │   ├── submission/        # SCR-015: 確認・提出
+│   │   │   │   ├── status/            # SCR-016: 提出状況確認
+│   │   │   │   └── withholding/       # SCR-017: 源泉徴収票閲覧
+│   │   │   └── admin/                 # 管理者向け画面（SCR-100〜105）
+│   │   │       ├── dashboard/         # SCR-100: ダッシュボード
+│   │   │       ├── declarations/      # SCR-101〜102: 申告書管理・審査
+│   │   │       ├── calculation/       # SCR-103〜104: 計算実行・結果確認
+│   │   │       └── reports/           # SCR-105: 帳票出力
+│   │   ├── hooks/                     # カスタムフック
+│   │   ├── lib/                       # APIクライアント・ユーティリティ
+│   │   ├── stores/                    # 状態管理（Zustand）
+│   │   ├── types/                     # 型定義
+│   │   └── router/                    # ルーティング設定
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
+│
+├── backend/                           # バックエンド（Python / FastAPI）
+│   ├── app/
+│   │   ├── api/v1/routers/            # APIエンドポイント定義
+│   │   │   ├── auth.py                # 認証
+│   │   │   ├── declarations.py        # 申告書管理
+│   │   │   ├── dependents.py          # 扶養控除
+│   │   │   ├── insurance.py           # 保険料控除
+│   │   │   ├── housing.py             # 住宅借入金等控除
+│   │   │   ├── attachments.py         # 添付書類
+│   │   │   ├── calculation.py         # 年末調整計算
+│   │   │   └── reports.py             # 帳票出力
+│   │   ├── domain/
+│   │   │   ├── models/                # ドメインモデル
+│   │   │   ├── services/
+│   │   │   │   ├── tax_calculation/   # 計算エンジン（仕様書 § 5参照）
+│   │   │   │   │   ├── salary_income.py
+│   │   │   │   │   ├── insurance_deduction.py
+│   │   │   │   │   ├── housing_deduction.py
+│   │   │   │   │   └── tax_engine.py
+│   │   │   │   ├── declaration_service.py
+│   │   │   │   ├── notification_service.py
+│   │   │   │   └── report_service.py
+│   │   │   └── repositories/          # リポジトリインターフェース
+│   │   ├── infrastructure/
+│   │   │   ├── database/
+│   │   │   │   ├── models.py          # SQLAlchemy ORMモデル（仕様書 § 4参照）
+│   │   │   │   └── migrations/        # Alembicマイグレーション
+│   │   │   ├── storage/               # ファイルストレージ（MinIO/S3）
+│   │   │   └── external/
+│   │   │       ├── payroll_system.py  # 給与システム連携（SFTP/CSV）
+│   │   │       ├── etax.py            # e-Tax XML連携
+│   │   │       └── eltax.py           # eLTAX連携
+│   │   └── main.py
+│   ├── tests/
+│   │   ├── unit/                      # 単体テスト（計算ロジック等）
+│   │   └── integration/               # 統合テスト
+│   ├── pyproject.toml
+│   └── Dockerfile
+│
+├── docs/                              # ドキュメント
+│   ├── system-specification.md        # 本書（システム仕様書）
+│   ├── architecture.md                # アーキテクチャ設計書
+│   └── mockup/
+│       └── index.html                 # 画面モックアップ（全15画面）
+│
+├── infra/                             # インフラ設定
+│   ├── docker/
+│   │   ├── docker-compose.yml         # 開発環境
+│   │   └── docker-compose.prod.yml    # 本番環境
+│   └── nginx/
+│       └── nginx.conf
+│
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                     # テスト・リント
+│       └── pages.yml                  # GitHub Pages デプロイ
+│
+├── index.html                         # GitHub Pages 公開用トップページ
+└── README.md                          # プロジェクト概要
+```
+
+---
+
+## 11. 改訂履歴
 
 | バージョン | 改訂日 | 改訂者 | 改訂内容 |
 |-----------|--------|--------|---------|
