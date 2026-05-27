@@ -337,6 +337,18 @@
             <div class="form-group"><label class="form-label">社員番号</label><input class="form-control" value="EMP00123" readonly></div>
             <div class="form-group"><label class="form-label">生年月日</label><input class="form-control" type="date" value="1985-04-15" readonly></div>
           </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ご本人の障害者区分<span class="required">必須</span></label>
+              <select class="form-control" style="max-width:320px;" id="self-disability">
+                <option value="none">該当なし</option>
+                <option value="general">一般障害者（控除額：27万円）</option>
+                <option value="special">特別障害者（控除額：40万円）</option>
+                <option value="cohabitation_special">同居特別障害者（控除額：75万円）</option>
+              </select>
+              <div class="form-hint">身体障害者手帳・精神障害者保健福祉手帳・療育手帳等をお持ちの方は該当区分を選択してください</div>
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -359,21 +371,35 @@
 
         <div class="card">
           <div class="card-title">扶養親族</div>
-          <div class="alert alert-info">📌 16歳以上の扶養親族を入力してください</div>
-          <table>
-            <thead><tr><th>氏名</th><th>続柄</th><th>生年月日</th><th>年間所得</th><th>障害区分</th><th>同居</th><th></th></tr></thead>
-            <tbody>
-              <tr>
-                <td>田中 一郎</td><td>子</td><td>2005/03/10</td><td>0円</td><td>なし</td><td>同居</td>
-                <td><button class="btn btn-secondary btn-sm">編集</button></td>
-              </tr>
-              <tr>
-                <td>田中 次郎</td><td>子</td><td>2008/11/25</td><td>0円</td><td>なし</td><td>同居</td>
-                <td><button class="btn btn-secondary btn-sm">編集</button></td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="alert alert-info">📌 16歳以上の扶養親族を入力してください。扶養区分は生年月日から自動判定されます。</div>
+          <div style="overflow-x:auto;">
+            <table style="min-width:700px;">
+              <thead><tr><th>氏名</th><th>続柄</th><th>生年月日</th><th>扶養区分<span style="font-weight:400;font-size:11px;margin-left:4px;">（自動）</span></th><th>年間所得</th><th>障害者区分</th><th>同居</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>田中 一郎</td><td>子</td><td>2005/03/10</td>
+                  <td><span style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;">特定扶養 63万円</span></td>
+                  <td>0円</td>
+                  <td><span style="background:#f1f5f9;color:#64748b;font-size:11px;padding:2px 8px;border-radius:10px;">該当なし</span></td>
+                  <td>同居</td>
+                  <td><button class="btn btn-secondary btn-sm">編集</button></td>
+                </tr>
+                <tr>
+                  <td>田中 次郎</td><td>子</td><td>2008/11/25</td>
+                  <td><span style="background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;">一般扶養 38万円</span></td>
+                  <td>0円</td>
+                  <td><span style="background:#f1f5f9;color:#64748b;font-size:11px;padding:2px 8px;border-radius:10px;">該当なし</span></td>
+                  <td>同居</td>
+                  <td><button class="btn btn-secondary btn-sm">編集</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <button class="btn btn-secondary btn-sm" style="margin-top:12px;">＋ 扶養親族を追加</button>
+          <div style="margin-top:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:12px;color:#64748b;line-height:1.7;">
+            <strong>扶養区分の自動判定基準（12/31時点の年齢）</strong><br>
+            16歳未満 → 対象外 ／ 16〜18歳・23〜69歳 → 一般扶養 38万円 ／ 19〜22歳 → 特定扶養 63万円 ／ 70歳以上（別居）→ 老人扶養 48万円 ／ 70歳以上（同居）→ 同居老親等 58万円
+          </div>
         </div>
 
         <div class="btn-group">

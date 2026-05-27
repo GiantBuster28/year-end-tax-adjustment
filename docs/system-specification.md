@@ -187,6 +187,7 @@
 | department_id | BIGINT | FK | 部署ID |
 | email | VARCHAR(255) | NOT NULL, UNIQUE | メールアドレス |
 | is_active | BOOLEAN | NOT NULL, DEFAULT TRUE | 在職フラグ |
+| disability_type | VARCHAR(20) | DEFAULT 'none' | 本人の障害者区分（none / general / special / cohabitation_special） |
 | created_at | TIMESTAMPTZ | NOT NULL | 作成日時 |
 | updated_at | TIMESTAMPTZ | NOT NULL | 更新日時 |
 
@@ -215,7 +216,7 @@
 | first_name | VARCHAR(50) | NOT NULL | 名 |
 | birth_date | DATE | NOT NULL | 生年月日 |
 | annual_income | DECIMAL(12,0) | NOT NULL | 年間所得見積額 |
-| disability_type | VARCHAR(20) | | 障害者区分 |
+| disability_type | VARCHAR(20) | DEFAULT 'none' | 障害者区分（none / general / special / cohabitation_special） |
 | is_living_together | BOOLEAN | NOT NULL | 同居フラグ |
 
 #### 4.1.4 保険料控除情報（insurance_deductions）
@@ -298,6 +299,35 @@
 
 ※ 復興特別所得税：算出所得税額 × 2.1%
 
+### 5.5 扶養区分の自動判定ロジック
+
+扶養親族の区分は、入力された生年月日（`birth_date`）と同居フラグ（`is_living_together`）から年末調整対象年度の12月31日時点の年齢を基に自動判定する。
+
+| 優先順 | 判定条件 | 扶養区分 | 控除額 |
+|-------|---------|---------|-------|
+| 1 | 年齢 15歳以下 | 年少扶養親族（控除対象外） | 0円 |
+| 2 | 年齢 19〜22歳 | 特定扶養親族 | 630,000円 |
+| 3 | 年齢 70歳以上 かつ 同居 | 同居老親等 | 580,000円 |
+| 4 | 年齢 70歳以上 かつ 別居 | 老人扶養親族 | 480,000円 |
+| 5 | 上記以外（16〜18歳・23〜69歳） | 一般扶養親族 | 380,000円 |
+
+> **判定年齢の基準日**：対象年度の12月31日時点。例：2026年度は2026年12月31日時点の満年齢で判定。  
+> **配偶者控除・配偶者特別控除**：配偶者の年間所得に応じて適用区分が変わる（所得48万円以下→配偶者控除、48万円超133万円以下→配偶者特別控除）。
+
+### 5.6 障害者控除額の計算
+
+障害者控除は、**本人（employees.disability_type）** および **扶養親族（dependents.disability_type）** の障害者区分に応じて加算する。
+
+| disability_type 値 | 区分名 | 控除額 |
+|-------------------|-------|-------|
+| `none` | 対象外 | 0円 |
+| `general` | 一般障害者 | 270,000円 |
+| `special` | 特別障害者 | 400,000円 |
+| `cohabitation_special` | 同居特別障害者 | 750,000円 |
+
+> **同居特別障害者**：特別障害者に該当する扶養親族と同居している場合に適用。`disability_type = 'cohabitation_special'` かつ `is_living_together = true` であること。  
+> **本人が特別障害者の場合**：`employees.disability_type = 'special'` または `'cohabitation_special'` で400,000円が控除される。
+
 ---
 
 ## 6. 画面仕様
@@ -328,6 +358,9 @@
 |------|------------------|
 | 生年月日 | 過去日付かつ1900年以降であること |
 | 年間所得見積額 | 0以上の整数、48万円超で扶養不可の警告表示 |
+| 本人の障害者区分 | none / general / special / cohabitation_special の4値のみ許容 |
+| 扶養親族の障害者区分 | none / general / special / cohabitation_special の4値のみ許容 |
+| 扶養区分（表示） | 生年月日・同居フラグから自動判定し画面上にラベル表示（編集不可） |
 | 保険料支払額 | 0より大きい正の整数 |
 | 住宅ローン残高 | 0より大きい正の整数 |
 | 添付書類 | PDF/JPEG/PNG、ファイルサイズ10MB以内 |
@@ -529,3 +562,4 @@ year-end-tax-adjustment/
 |-----------|--------|--------|---------|
 | 1.0.0 | 2026-05-14 | システム開発チーム | 初版作成 |
 | 1.1.0 | 2026-05-25 | システム開発チーム | §2.3 適用対象・対象外ケースを新設（副業・副収入、休業中、雇用形態別、年途中入退社の取り扱いを追記） |
+| 1.2.0 | 2026-05-27 | システム開発チーム | §4.1.1 employees に disability_type カラム追加、§4.1.3 dependents.disability_type の値定義を明確化、§5.5 扶養区分自動判定ロジック追加、§5.6 障害者控除計算仕様追加、§6.2 バリデーション追記 |
