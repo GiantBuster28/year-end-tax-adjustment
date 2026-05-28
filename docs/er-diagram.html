@@ -254,6 +254,7 @@ erDiagram
         bigint department_id FK
         varchar email UK
         boolean is_active
+        varchar disability_type
         timestamptz created_at
         timestamptz updated_at
     }
@@ -452,6 +453,7 @@ erDiagram
             <tr><td>department_id</td><td><span class="type-chip">bigint</span></td><td><span class="badge badge-fk">FK</span></td><td>部署ID</td></tr>
             <tr><td>email</td><td><span class="type-chip">varchar(255)</span></td><td><span class="badge badge-uk">UK</span></td><td>メールアドレス</td></tr>
             <tr><td>is_active</td><td><span class="type-chip">boolean</span></td><td><span class="badge badge-nn">NN</span></td><td>有効フラグ</td></tr>
+            <tr><td>disability_type</td><td><span class="type-chip">varchar(20)</span></td><td></td><td>本人の障害者区分</td></tr>
             <tr><td>created_at</td><td><span class="type-chip">timestamptz</span></td><td><span class="badge badge-nn">NN</span></td><td>作成日時</td></tr>
             <tr><td>updated_at</td><td><span class="type-chip">timestamptz</span></td><td><span class="badge badge-nn">NN</span></td><td>更新日時</td></tr>
           </tbody>
@@ -479,6 +481,9 @@ erDiagram
         </table>
         <div style="padding:8px 12px;background:#f0fdf4;font-size:11px;color:#065f46;">
           ステータス値: draft / submitted / under_review / approved / rejected / calculated
+        </div>
+        <div style="padding:8px 12px;background:#eff6ff;font-size:11px;color:#1e40af;">
+          ※ employees.disability_type（本人障害者区分）: none / general / special / cohabitation_special
         </div>
       </div>
 
