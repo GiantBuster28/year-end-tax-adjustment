@@ -40,19 +40,59 @@
   .card-title { font-size: 15px; font-weight: 700; color: #1a3a5c; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #e8f0fe; }
 
   /* ── Buttons ── */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
-  .btn-primary { background: #1a56db; color: #fff; }
-  .btn-primary:hover { background: #1446b5; }
-  .btn-secondary { background: #fff; color: #3a4a5c; border: 1px solid #c0cdd8; }
-  .btn-secondary:hover { background: #f0f4f8; }
-  .btn-success { background: #0d9488; color: #fff; }
-  .btn-success:hover { background: #0a7a70; }
-  .btn-danger { background: #dc2626; color: #fff; }
-  .btn-danger:hover { background: #b91c1c; }
-  .btn-warning { background: #d97706; color: #fff; }
-  .btn-warning:hover { background: #b45309; }
-  .btn-sm { padding: 5px 12px; font-size: 12px; }
-  .btn-lg { padding: 12px 32px; font-size: 15px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 22px; border-radius: 8px; border: none;
+    cursor: pointer; font-size: 13px; font-weight: 700;
+    transition: all .18s cubic-bezier(.4,0,.2,1);
+    position: relative; overflow: hidden;
+    letter-spacing: .02em;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08);
+  }
+  .btn:active { transform: scale(.96); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  .btn::after {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(255,255,255,0); transition: background .15s;
+    border-radius: inherit;
+  }
+  .btn:hover::after { background: rgba(255,255,255,.12); }
+  .btn-primary {
+    background: linear-gradient(135deg, #1a56db 0%, #1446b5 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(26,86,219,.35), 0 1px 3px rgba(0,0,0,.12);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 4px 16px rgba(26,86,219,.45), 0 2px 6px rgba(0,0,0,.15);
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: #fff; color: #3a4a5c;
+    border: 1.5px solid #c0cdd8;
+  }
+  .btn-secondary:hover {
+    background: #f0f4f8; border-color: #a0b0c0;
+    transform: translateY(-1px);
+  }
+  .btn-success {
+    background: linear-gradient(135deg, #0d9488 0%, #0a7a70 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(13,148,136,.35);
+  }
+  .btn-success:hover { box-shadow: 0 4px 16px rgba(13,148,136,.45); transform: translateY(-1px); }
+  .btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(220,38,38,.35);
+  }
+  .btn-danger:hover { box-shadow: 0 4px 16px rgba(220,38,38,.45); transform: translateY(-1px); }
+  .btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(245,158,11,.35);
+  }
+  .btn-warning:hover { box-shadow: 0 4px 16px rgba(245,158,11,.45); transform: translateY(-1px); }
+  .btn-sm { padding: 5px 14px; font-size: 12px; border-radius: 6px; }
+  .btn-lg { padding: 13px 36px; font-size: 15px; border-radius: 10px; }
   .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
 
   /* ── Form ── */
@@ -1287,6 +1327,68 @@
   function printAlert(name) {
     alert('🖨️ 「' + name + '」の出力処理を開始します。\n（モックアップのためダウンロードは行われません）');
   }
+
+  /* ── ボタン音 (Web Audio API) ── */
+  const _ac = new (window.AudioContext || window.webkitAudioContext)();
+
+  function _playClick(type) {
+    const ctx = _ac;
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+    if (type === 'primary') {
+      // 主要ボタン：軽快な上昇音
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(660, now + 0.08);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now); osc.stop(now + 0.15);
+    } else if (type === 'danger') {
+      // 危険ボタン：低めの短音
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.12);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.start(now); osc.stop(now + 0.12);
+    } else if (type === 'success') {
+      // 成功ボタン：2音チャイム
+      [440, 550].forEach((freq, i) => {
+        const o2 = ctx.createOscillator();
+        const g2 = ctx.createGain();
+        o2.connect(g2); g2.connect(ctx.destination);
+        o2.type = 'sine';
+        o2.frequency.value = freq;
+        g2.gain.setValueAtTime(0, now + i * 0.09);
+        g2.gain.linearRampToValueAtTime(0.15, now + i * 0.09 + 0.02);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.15);
+        o2.start(now + i * 0.09); o2.stop(now + i * 0.09 + 0.15);
+      });
+    } else {
+      // セカンダリ：ソフトなクリック
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(260, now + 0.06);
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now); osc.stop(now + 0.08);
+    }
+  }
+
+  // 全ボタンに自動でクリック音をバインド
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.btn');
+    if (!btn) return;
+    if (btn.classList.contains('btn-primary'))   _playClick('primary');
+    else if (btn.classList.contains('btn-danger'))  _playClick('danger');
+    else if (btn.classList.contains('btn-success')) _playClick('success');
+    else                                             _playClick('secondary');
+  });
 </script>
 </body>
 </html>
