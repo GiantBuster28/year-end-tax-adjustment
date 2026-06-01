@@ -1,5 +1,5 @@
 from app.services.calculation.salary import calculate_salary_income
-from app.services.calculation.insurance import calculate_insurance_deduction
+from app.services.calculation.insurance import calculate_total_insurance_deduction as calculate_insurance_deduction
 from app.services.calculation.housing import calculate_housing_deduction
 from app.services.calculation.dependent import calculate_dependent_deduction, get_dependent_category
 from app.services.calculation.disability import calculate_disability_deduction
