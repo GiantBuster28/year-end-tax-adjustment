@@ -1,0 +1,49 @@
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.env/
+
+# ── Environment variables (never commit secrets) ──────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── IDEs & editors ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Build artefacts ───────────────────────────────────────────────────────────
+build/
+coverage/
+.nyc_output/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Local volume directories if bind-mounted
+postgres_data/
+redis_data/
+minio_data/
