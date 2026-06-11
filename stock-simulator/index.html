@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>株式取引シミュレーター</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2332;
+      --border: #1e2d47;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --dim: #94a3b8;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.4;
+    }
+
+    /* ---- Header ---- */
+    .hdr {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 56px; gap: 16px;
+    }
+    .hdr-title { font-size: 16px; font-weight: 800; color: var(--blue); letter-spacing: -0.02em; white-space: nowrap; }
+    .hdr-stats { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .hdr-stat { text-align: right; }
+    .hdr-stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .hdr-stat-val { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .hdr-stat-val.up { color: var(--green); }
+    .hdr-stat-val.down { color: var(--red); }
+    .btn-reset {
+      background: none; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--muted); padding: 5px 12px;
+      cursor: pointer; font-size: 12px; white-space: nowrap;
+    }
+    .btn-reset:hover { border-color: var(--dim); color: var(--text); }
+
+    /* ---- Layout ---- */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    @media (max-width: 880px) {
+      .layout { grid-template-columns: 1fr; padding: 8px; gap: 8px; }
+    }
+
+    /* ---- Card ---- */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .card-hdr {
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+
+    /* ---- Stock rows ---- */
+    .stock-row {
+      display: grid;
+      grid-template-columns: 52px 1fr 90px 70px 84px 52px;
+      align-items: center;
+      padding: 8px 16px; gap: 8px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.1s;
+    }
+    .stock-row:last-of-type { border-bottom: none; }
+    .stock-row:hover { background: var(--surface2); }
+    .stock-row.active { background: var(--surface2); border-left: 3px solid var(--blue); padding-left: 13px; }
+    .s-code { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; }
+    .s-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .s-price { font-size: 14px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+    .s-chg { font-size: 12px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+    .s-chg.up { color: var(--green); }
+    .s-chg.dn { color: var(--red); }
+    .s-chg.fl { color: var(--muted); }
+    .s-held { font-size: 11px; color: var(--muted); text-align: right; }
+
+    /* ---- Trade panel ---- */
+    .trade-panel { padding: 16px; border-top: 2px solid var(--border); background: var(--surface2); }
+    .tp-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .tp-meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+    .tp-meta b { color: var(--text); font-weight: 600; }
+    .tp-pnl-pos { color: var(--green); font-weight: 700; }
+    .tp-pnl-neg { color: var(--red); font-weight: 700; }
+    .tp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .tp-label { font-size: 12px; color: var(--muted); white-space: nowrap; min-width: 42px; }
+    .tp-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 6px 10px;
+      font-size: 14px; text-align: right; font-variant-numeric: tabular-nums;
+    }
+    .tp-input:focus { outline: none; border-color: var(--blue); }
+    .tp-presets { display: flex; gap: 4px; }
+    .tp-preset {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--dim); padding: 4px 8px; font-size: 11px; cursor: pointer;
+    }
+    .tp-preset:hover { background: var(--border); color: var(--text); }
+    .tp-cost { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .tp-cost b { color: var(--text); }
+    .tp-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-buy, .btn-sell {
+      padding: 10px 0; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity 0.1s;
+    }
+    .btn-buy  { background: var(--green); color: #000; }
+    .btn-sell { background: var(--red); color: #fff; }
+    .btn-buy:hover, .btn-sell:hover { opacity: 0.85; }
+    .btn-buy:disabled, .btn-sell:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ---- Portfolio ---- */
+    .pf-cash { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .pf-cash-lbl { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .pf-cash-val { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .holding { padding: 10px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    .holding:hover { background: var(--surface2); }
+    .holding:last-of-type { border-bottom: none; }
+    .holding-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .holding-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 4px; font-size: 11px; }
+    .hg-lbl { color: var(--muted); }
+    .hg-val { text-align: right; font-variant-numeric: tabular-nums; }
+    .holding-pnl { font-size: 13px; font-weight: 700; text-align: right; margin-top: 6px; }
+    .holding-pnl.up { color: var(--green); }
+    .holding-pnl.dn { color: var(--red); }
+    .pf-total {
+      padding: 12px 16px; border-top: 2px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface2);
+    }
+    .pf-total-lbl { font-size: 12px; color: var(--muted); }
+    .pf-total-val { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+    .empty small { display: block; font-size: 11px; margin-top: 6px; }
+
+    /* ---- History ---- */
+    .hist-section { grid-column: 1 / -1; }
+    @media (max-width: 880px) { .hist-section { grid-column: 1; } }
+    .hist-hdr-row, .hist-row {
+      display: grid;
+      grid-template-columns: 72px 1fr 50px 60px 90px 110px;
+      padding: 8px 16px; gap: 8px;
+      align-items: center; font-size: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hist-hdr-row {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      background: var(--surface2);
+    }
+    .hist-row:last-child { border-bottom: none; }
+    .hist-type { font-weight: 700; }
+    .hist-type.buy  { color: var(--green); }
+    .hist-type.sell { color: var(--red); }
+    .hist-total { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+    .hist-time { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+
+    /* ---- Notification ---- */
+    .notif {
+      position: fixed; top: 64px; right: 16px; z-index: 999;
+      padding: 10px 18px; border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      animation: fadeSlide 0.2s ease;
+      max-width: 320px;
+    }
+    .notif.ok  { background: var(--green); color: #000; }
+    .notif.err { background: var(--red); color: #fff; }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(-8px) translateX(8px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* ---- Mobile tabs ---- */
+    .mtabs {
+      display: none;
+      position: sticky; top: 56px; z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .mtab {
+      flex: 1; padding: 10px 4px; text-align: center;
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      cursor: pointer; border-bottom: 2px solid transparent;
+      transition: color 0.1s;
+    }
+    .mtab.on { color: var(--blue); border-bottom-color: var(--blue); }
+    @media (max-width: 880px) {
+      .mtabs { display: flex; }
+      .pane { display: none; }
+      .pane.on { display: block; }
+    }
+
+    /* ---- Ticker bar ---- */
+    .ticker-wrap {
+      background: #0d1117; border-bottom: 1px solid var(--border);
+      overflow: hidden; padding: 5px 0; font-size: 11px;
+    }
+    .ticker-track {
+      display: flex; gap: 40px; white-space: nowrap;
+      animation: ticker 40s linear infinite;
+    }
+    .ticker-item { display: inline-flex; gap: 6px; align-items: center; }
+    .ticker-name { color: var(--muted); }
+    .ticker-val { font-variant-numeric: tabular-nums; font-weight: 600; }
+    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+const INITIAL_CASH = 1_000_000;
+const HIST_LEN = 60;
+const TICK_MS  = 2500;
+
+const STOCKS = [
+  { id: '7203', name: 'トヨタ自動車',           base: 2800,  vol: 0.008 },
+  { id: '6758', name: 'ソニーグループ',          base: 13500, vol: 0.011 },
+  { id: '9984', name: 'ソフトバンクG',           base: 8200,  vol: 0.014 },
+  { id: '7974', name: '任天堂',                 base: 9100,  vol: 0.009 },
+  { id: '6861', name: 'キーエンス',              base: 65000, vol: 0.007 },
+  { id: '9432', name: 'NTT',                   base: 180,   vol: 0.005 },
+  { id: '8306', name: '三菱UFJ FG',             base: 1750,  vol: 0.009 },
+  { id: '6098', name: 'リクルートHD',            base: 10200, vol: 0.011 },
+  { id: '9983', name: 'ファーストリテイリング', base: 48000, vol: 0.008 },
+  { id: '6501', name: '日立製作所',              base: 3500,  vol: 0.010 },
+];
+const SMAP = Object.fromEntries(STOCKS.map(s => [s.id, s]));
+
+function mkPrices() {
+  return Object.fromEntries(STOCKS.map(s => [s.id, s.base]));
+}
+function mkHistory() {
+  const h = {};
+  STOCKS.forEach(s => {
+    const arr = [];
+    let p = s.base;
+    for (let i = 0; i < HIST_LEN; i++) {
+      const r = (Math.random() - 0.5) * 2;
+      p = Math.max(Math.round(p + p * s.vol * 0.6 * r + (s.base - p) * 0.01), 10);
+      arr.push(p);
+    }
+    h[s.id] = arr;
+  });
+  return h;
+}
+
+function Sparkline({ data, color }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c || data.length < 2) return;
+    const ctx = c.getContext('2d');
+    const W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+    const lo = Math.min(...data), hi = Math.max(...data);
+    const range = hi - lo || 1;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    data.forEach((v, i) => {
+      const x = (i / (data.length - 1)) * W;
+      const y = H - 2 - ((v - lo) / range) * (H - 4);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }, [data, color]);
+  return <canvas ref={ref} width={82} height={32} style={{ display: 'block' }} />;
+}
+
+const fy   = n => '¥' + Math.abs(Math.round(n)).toLocaleString('ja-JP');
+const fpct = n => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+
+function App() {
+  const [prices,   setPrices]   = useState(mkPrices);
+  const [history,  setHistory]  = useState(mkHistory);
+  const [prevP,    setPrevP]    = useState(mkPrices);
+  const [cash,     setCash]     = useState(INITIAL_CASH);
+  const [holdings, setHoldings] = useState({});
+  const [txs,      setTxs]      = useState([]);
+  const [sel,      setSel]      = useState(STOCKS[0].id);
+  const [qty,      setQty]      = useState(1);
+  const [notif,    setNotif]    = useState(null);
+  const [tab,      setTab]      = useState('market');
+
+  const pricesRef  = useRef(prices);
+  const histRef    = useRef(history);
+
+  // Price simulation loop
+  useEffect(() => {
+    const id = setInterval(() => {
+      const prev = pricesRef.current;
+      const next = {}, nextH = {};
+      STOCKS.forEach(s => {
+        const p  = prev[s.id];
+        const r  = (Math.random() - 0.5) * 2;
+        const mr = (s.base - p) * 0.004;
+        next[s.id]  = Math.max(Math.round(p + p * s.vol * r + mr), 10);
+        nextH[s.id] = [...histRef.current[s.id].slice(1), next[s.id]];
+      });
+      pricesRef.current = next;
+      histRef.current   = nextH;
+      setPrevP(prev);
+      setPrices(next);
+      setHistory(nextH);
+    }, TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const notify = useCallback((msg, type = 'ok') => {
+    setNotif({ msg, type });
+    setTimeout(() => setNotif(null), 3000);
+  }, []);
+
+  const doBuy = useCallback(() => {
+    const p    = prices[sel];
+    const cost = p * qty;
+    if (qty < 1)      { notify('株数を入力してください', 'err'); return; }
+    if (cost > cash)  { notify('残高が不足しています', 'err'); return; }
+    setCash(c => c - cost);
+    setHoldings(h => {
+      const cur = h[sel] ?? { shares: 0, avgCost: 0 };
+      const ns  = cur.shares + qty;
+      return { ...h, [sel]: { shares: ns, avgCost: (cur.shares * cur.avgCost + cost) / ns } };
+    });
+    setTxs(t => [{
+      id: Date.now(), type: 'buy', sid: sel, qty, price: p, total: cost, ts: new Date()
+    }, ...t.slice(0, 99)]);
+    notify(`${SMAP[sel].name} ${qty}株を購入しました`);
+  }, [prices, sel, qty, cash, notify]);
+
+  const doSell = useCallback(() => {
+    const h = holdings[sel];
+    if (qty < 1)               { notify('株数を入力してください', 'err'); return; }
+    if (!h || h.shares < qty)  { notify('保有株数が不足しています', 'err'); return; }
+    const p        = prices[sel];
+    const proceeds = p * qty;
+    setCash(c => c + proceeds);
+    setHoldings(hh => {
+      const ns = hh[sel].shares - qty;
+      if (ns <= 0) { const { [sel]: _, ...rest } = hh; return rest; }
+      return { ...hh, [sel]: { ...hh[sel], shares: ns } };
+    });
+    setTxs(t => [{
+      id: Date.now(), type: 'sell', sid: sel, qty, price: p, total: proceeds, ts: new Date()
+    }, ...t.slice(0, 99)]);
+    notify(`${SMAP[sel].name} ${qty}株を売却しました`);
+  }, [prices, sel, qty, holdings, notify]);
+
+  const doReset = useCallback(() => {
+    const np = mkPrices(), nh = mkHistory();
+    pricesRef.current = np;
+    histRef.current   = nh;
+    setPrices(np); setPrevP(np); setHistory(nh);
+    setCash(INITIAL_CASH); setHoldings({}); setTxs([]); setQty(1);
+    notify('シミュレーションをリセットしました');
+  }, [notify]);
+
+  const pfValue = useMemo(() =>
+    Object.entries(holdings).reduce((s, [id, { shares }]) => s + shares * (prices[id] ?? 0), 0),
+    [holdings, prices]
+  );
+  const totalVal = cash + pfValue;
+  const pnl      = totalVal - INITIAL_CASH;
+  const pnlPct   = (pnl / INITIAL_CASH) * 100;
+
+  const selStock  = SMAP[sel];
+  const selPrice  = prices[sel] ?? 0;
+  const selHeld   = holdings[sel];
+  const selCost   = selPrice * qty;
+  const selPnl    = selHeld ? (selPrice - selHeld.avgCost) * selHeld.shares : 0;
+  const selPnlPct = selHeld ? ((selPrice - selHeld.avgCost) / selHeld.avgCost) * 100 : 0;
+
+  // Build doubled ticker data for infinite scroll
+  const tickerItems = [...STOCKS, ...STOCKS].map((s, i) => {
+    const cur  = prices[s.id];
+    const prev = prevP[s.id];
+    const diff = cur - prev;
+    const pct  = prev ? (diff / prev) * 100 : 0;
+    const isUp = diff >= 0;
+    return <span key={i} className="ticker-item">
+      <span className="ticker-name">{s.id}</span>
+      <span className="ticker-val" style={{ color: isUp ? '#22c55e' : '#ef4444' }}>{fy(cur)}</span>
+      <span className={`ticker-val`} style={{ color: isUp ? '#22c55e' : '#ef4444', fontSize: 10 }}>{fpct(pct)}</span>
+    </span>;
+  });
+
+  return <>
+    {notif && <div className={`notif ${notif.type}`}>{notif.msg}</div>}
+
+    {/* Header */}
+    <div className="hdr">
+      <div className="hdr-title">株式取引シミュレーター</div>
+      <div className="hdr-stats">
+        <div className="hdr-stat">
+          <div className="hdr-stat-lbl">総資産</div>
+          <div className="hdr-stat-val">{fy(totalVal)}</div>
+        </div>
+        <div className="hdr-stat">
+          <div className="hdr-stat-lbl">損益</div>
+          <div className={`hdr-stat-val ${pnl >= 0 ? 'up' : 'down'}`}>
+            {pnl >= 0 ? '+' : '-'}{fy(pnl)}&nbsp;({fpct(pnlPct)})
+          </div>
+        </div>
+        <div className="hdr-stat">
+          <div className="hdr-stat-lbl">現金残高</div>
+          <div className="hdr-stat-val">{fy(cash)}</div>
+        </div>
+        <button className="btn-reset" onClick={doReset}>リセット</button>
+      </div>
+    </div>
+
+    {/* Ticker */}
+    <div className="ticker-wrap">
+      <div className="ticker-track">{tickerItems}</div>
+    </div>
+
+    {/* Mobile tabs */}
+    <div className="mtabs">
+      {[['market','市場'],['portfolio','保有'],['history','履歴']].map(([k, lbl]) => (
+        <div key={k} className={`mtab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{lbl}</div>
+      ))}
+    </div>
+
+    <div className="layout">
+      {/* Left: market + trade */}
+      <div className={`pane ${tab === 'market' ? 'on' : ''}`}>
+        <div className="card">
+          <div className="card-hdr">株式市場（仮想）</div>
+          {STOCKS.map(s => {
+            const cur  = prices[s.id];
+            const prev = prevP[s.id];
+            const diff = cur - prev;
+            const dpct = prev ? (diff / prev) * 100 : 0;
+            const isUp = diff >= 0;
+            const sparkColor = history[s.id].at(-1) >= history[s.id][0] ? '#22c55e' : '#ef4444';
+            return (
+              <div key={s.id} className={`stock-row ${sel === s.id ? 'active' : ''}`} onClick={() => setSel(s.id)}>
+                <div className="s-code">{s.id}</div>
+                <div className="s-name">{s.name}</div>
+                <div className="s-price" style={{ color: isUp ? '#22c55e' : '#ef4444' }}>{fy(cur)}</div>
+                <div className={`s-chg ${diff === 0 ? 'fl' : isUp ? 'up' : 'dn'}`}>{fpct(dpct)}</div>
+                <Sparkline data={history[s.id]} color={sparkColor} />
+                <div className="s-held">{holdings[s.id] ? `${holdings[s.id].shares}株` : ''}</div>
+              </div>
+            );
+          })}
+
+          {/* Trade panel */}
+          <div className="trade-panel">
+            <div className="tp-title">{selStock?.name}&ensp;<span style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 400 }}>({sel})</span></div>
+            <div className="tp-meta">
+              <span>現在値:&nbsp;<b>{fy(selPrice)}</b></span>
+              {selHeld && (
+                <span>保有損益:&nbsp;
+                  <span className={selPnl >= 0 ? 'tp-pnl-pos' : 'tp-pnl-neg'}>
+                    {selPnl >= 0 ? '+' : '-'}{fy(selPnl)}&nbsp;({fpct(selPnlPct)})
+                  </span>
+                </span>
+              )}
+            </div>
+            <div className="tp-row">
+              <span className="tp-label">株数</span>
+              <input
+                type="number" className="tp-input" min={1} value={qty}
+                onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+              <div className="tp-presets">
+                {[1, 10, 100].map(n => (
+                  <button key={n} className="tp-preset" onClick={() => setQty(n)}>{n}</button>
+                ))}
+              </div>
+            </div>
+            <div className="tp-cost">
+              取引金額:&nbsp;<b>{fy(selCost)}</b>
+              {selHeld && <span style={{ marginLeft: 14, color: 'var(--muted)' }}>保有&nbsp;{selHeld.shares.toLocaleString('ja-JP')}株</span>}
+            </div>
+            <div className="tp-btns">
+              <button className="btn-buy" onClick={doBuy} disabled={selCost > cash}>
+                買い&emsp;{fy(selCost)}
+              </button>
+              <button className="btn-sell" onClick={doSell} disabled={!selHeld || selHeld.shares < qty}>
+                売り&emsp;{fy(selCost)}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right: portfolio */}
+      <div className={`pane ${tab === 'portfolio' ? 'on' : ''}`}>
+        <div className="card">
+          <div className="card-hdr">ポートフォリオ</div>
+          <div className="pf-cash">
+            <div className="pf-cash-lbl">現金残高</div>
+            <div className="pf-cash-val">{fy(cash)}</div>
+          </div>
+          {Object.keys(holdings).length === 0 ? (
+            <div className="empty">
+              保有銘柄がありません
+              <small>銘柄を選択して買い注文を出してください</small>
+            </div>
+          ) : <>
+            {Object.entries(holdings).map(([id, { shares, avgCost }]) => {
+              const cur  = prices[id] ?? 0;
+              const val  = cur * shares;
+              const cost = avgCost * shares;
+              const pnl  = val - cost;
+              const pct  = cost ? (pnl / cost) * 100 : 0;
+              return (
+                <div key={id} className="holding" onClick={() => setSel(id)}>
+                  <div className="holding-name">{SMAP[id]?.name}&ensp;<span style={{ color: 'var(--muted)', fontSize: 11 }}>({id})</span></div>
+                  <div className="holding-grid">
+                    <span className="hg-lbl">保有株数</span>
+                    <span className="hg-val">{shares.toLocaleString('ja-JP')}株</span>
+                    <span className="hg-lbl">平均取得単価</span>
+                    <span className="hg-val">{fy(avgCost)}</span>
+                    <span className="hg-lbl">現在値</span>
+                    <span className="hg-val">{fy(cur)}</span>
+                    <span className="hg-lbl">評価額</span>
+                    <span className="hg-val">{fy(val)}</span>
+                  </div>
+                  <div className={`holding-pnl ${pnl >= 0 ? 'up' : 'dn'}`}>
+                    {pnl >= 0 ? '+' : '-'}{fy(pnl)}&nbsp;({fpct(pct)})
+                  </div>
+                </div>
+              );
+            })}
+            <div className="pf-total">
+              <span className="pf-total-lbl">株式評価額合計</span>
+              <span className="pf-total-val">{fy(pfValue)}</span>
+            </div>
+          </>}
+        </div>
+      </div>
+
+      {/* Transaction history — full width on desktop */}
+      <div className={`card hist-section pane ${tab === 'history' ? 'on' : ''}`}>
+        <div className="card-hdr">取引履歴</div>
+        {txs.length === 0 ? (
+          <div className="empty">取引履歴がありません</div>
+        ) : <>
+          <div className="hist-hdr-row">
+            <div>時刻</div>
+            <div>銘柄</div>
+            <div>区分</div>
+            <div>株数</div>
+            <div>単価</div>
+            <div>取引金額</div>
+          </div>
+          {txs.map(tx => (
+            <div key={tx.id} className="hist-row">
+              <div className="hist-time">{tx.ts.toLocaleTimeString('ja-JP')}</div>
+              <div style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {SMAP[tx.sid]?.name}
+              </div>
+              <div className={`hist-type ${tx.type}`}>{tx.type === 'buy' ? '買い' : '売り'}</div>
+              <div style={{ textAlign: 'right' }}>{tx.qty.toLocaleString('ja-JP')}株</div>
+              <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fy(tx.price)}</div>
+              <div className="hist-total">{fy(tx.total)}</div>
+            </div>
+          ))}
+        </>}
+      </div>
+    </div>
+  </>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

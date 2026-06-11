@@ -89,6 +89,16 @@
     .forgot { text-align: center; margin-top: 16px; font-size: 12px; color: #6a7f96; }
     .forgot a { color: #1a56db; text-decoration: none; }
 
+    .sim-link {
+      display: block; margin-top: 28px; padding: 14px;
+      background: #0a0e1a; border: 1.5px solid #1e2d47;
+      border-radius: 10px; text-align: center; text-decoration: none;
+      color: #f1f5f9; transition: border-color 0.15s;
+    }
+    .sim-link:hover { border-color: #3b82f6; }
+    .sim-link .sim-title { font-size: 14px; font-weight: 700; color: #3b82f6; }
+    .sim-link .sim-desc  { font-size: 12px; color: #64748b; margin-top: 4px; }
+
     footer {
       background: #1a3a5c; color: rgba(255,255,255,.5);
       text-align: center; padding: 14px;
@@ -189,6 +199,11 @@
     <button class="btn-login" onclick="login()">ログイン</button>
 
     <p class="forgot"><a href="#">パスワードをお忘れの方</a></p>
+
+    <a href="stock-simulator/" class="sim-link">
+      <div class="sim-title">株式取引シミュレーター</div>
+      <div class="sim-desc">仮想資金 ¥1,000,000 で日本株の取引を体験</div>
+    </a>
   </div>
 
   <!-- ログイン後ポータル -->
