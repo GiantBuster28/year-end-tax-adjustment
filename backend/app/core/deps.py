@@ -44,7 +44,6 @@ async def get_current_user(
         raise credentials_exception
 
     # Check Redis session (blocklist for logged-out tokens)
-    session_key = f"session:{token}"
     is_revoked = await redis.get(f"revoked:{token}")
     if is_revoked:
         raise credentials_exception

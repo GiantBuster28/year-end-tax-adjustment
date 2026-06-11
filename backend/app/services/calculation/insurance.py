@@ -75,14 +75,31 @@ def calculate_total_insurance_deduction(insurances: Sequence[InsuranceDeduction]
         int(i.payment_amount) for i in insurances if i.insurance_type == "earthquake"
     )
 
-    # 各区分の控除額（上限40,000）
-    life_new_ded = min(calculate_life_insurance_deduction_new(life_new_total), 40_000)
-    pension_new_ded = min(calculate_life_insurance_deduction_new(pension_new_total), 40_000)
-    life_old_ded = min(calculate_life_insurance_deduction_old(life_old_total), 50_000)
-    pension_old_ded = min(calculate_life_insurance_deduction_old(pension_old_total), 50_000)
+    # 新旧両方ある区分は合算して40,000上限、片方のみなら各上限を適用
+    if life_new_total > 0 and life_old_total > 0:
+        life_ded = min(
+            calculate_life_insurance_deduction_new(life_new_total)
+            + calculate_life_insurance_deduction_old(life_old_total),
+            40_000,
+        )
+    elif life_old_total > 0:
+        life_ded = min(calculate_life_insurance_deduction_old(life_old_total), 50_000)
+    else:
+        life_ded = min(calculate_life_insurance_deduction_new(life_new_total), 40_000)
 
-    # 生命保険料控除合計（新旧合算、上限120,000）
-    life_pension_total = min(life_new_ded + pension_new_ded + life_old_ded + pension_old_ded, 120_000)
+    if pension_new_total > 0 and pension_old_total > 0:
+        pension_ded = min(
+            calculate_life_insurance_deduction_new(pension_new_total)
+            + calculate_life_insurance_deduction_old(pension_old_total),
+            40_000,
+        )
+    elif pension_old_total > 0:
+        pension_ded = min(calculate_life_insurance_deduction_old(pension_old_total), 50_000)
+    else:
+        pension_ded = min(calculate_life_insurance_deduction_new(pension_new_total), 40_000)
+
+    # 生命保険料控除合計（上限120,000）
+    life_pension_total = min(life_ded + pension_ded, 120_000)
 
     # 地震保険料控除
     earthquake_ded = calculate_earthquake_deduction(earthquake_total)

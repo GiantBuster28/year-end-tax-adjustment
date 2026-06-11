@@ -1,7 +1,5 @@
 # ── Node.js ───────────────────────────────────────────────────────────────────
 node_modules/
-dist/
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -13,12 +11,20 @@ __pycache__/
 *.pyd
 .Python
 *.egg-info/
-.eggs/
 *.egg
+.eggs/
 .venv/
 venv/
 env/
 .env/
+
+# ── Frontend build ────────────────────────────────────────────────────────────
+dist/
+build/
+coverage/
+.nyc_output/
+frontend/dist/
+frontend/build/
 
 # ── Environment variables (never commit secrets) ──────────────────────────────
 .env
@@ -37,13 +43,7 @@ env/
 *.swo
 *~
 
-# ── Build artefacts ───────────────────────────────────────────────────────────
-build/
-coverage/
-.nyc_output/
-
-# ── Docker ────────────────────────────────────────────────────────────────────
-# Local volume directories if bind-mounted
+# ── Docker local volumes ───────────────────────────────────────────────────────
 postgres_data/
 redis_data/
 minio_data/

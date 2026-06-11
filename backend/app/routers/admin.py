@@ -2,6 +2,7 @@
 管理者向けAPIエンドポイント
 """
 import asyncio
+import uuid as uuid_mod
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
@@ -11,13 +12,13 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.core.deps import CurrentAdmin, DBSession
+from app.core.deps import CurrentAdmin, DBSession, get_redis
 from app.models.declaration import TaxAdjustmentDeclaration
 from app.models.dependent import Dependent
 from app.models.employee import Employee
 from app.models.insurance import InsuranceDeduction
 from app.models.result import TaxAdjustmentResult
-from app.schemas.declaration import DeclarationRead
+from app.schemas.declaration import DeclarationRead, SalaryDataUpdate
 from app.schemas.result import ResultRead
 from app.services.calculation.dependent import calculate_dependent_deduction
 from app.services.calculation.disability import calculate_disability_deduction
@@ -203,9 +204,18 @@ async def reject_declaration(
     return decl
 
 
-async def _run_calculations_for_year(year: int, db_session_factory) -> None:
+async def _run_calculations_for_year(year: int, task_id: str | None) -> None:
     """バックグラウンドで年間計算を実行する"""
+    from app.core.deps import get_redis as _get_redis
     from app.database import AsyncSessionLocal
+
+    async def _set_status(s: str) -> None:
+        if task_id:
+            try:
+                r = await _get_redis()
+                await r.setex(f"calc_status:{task_id}", 3600, s)
+            except Exception:
+                pass
 
     async with AsyncSessionLocal() as db:
         try:
@@ -229,9 +239,14 @@ async def _run_calculations_for_year(year: int, db_session_factory) -> None:
 
             for decl in declarations:
                 emp = decl.employee
-                # 総給与収入（仮：実際はDBから別途取得が必要）
-                # ここでは従業員の代表的な給与を仮定（実システムではpayroll連携）
-                total_salary = Decimal("5000000")  # 仮値
+
+                # 給与データ未設定の申告書はスキップ（管理者による事前入力が必要）
+                if decl.total_salary is None:
+                    continue
+
+                total_salary = decl.total_salary
+                social_insurance_ded = decl.social_insurance_deduction or Decimal("0")
+                withheld_tax_ytd = decl.withheld_tax_ytd or Decimal("0")
 
                 # 給与所得
                 salary_income = calculate_salary_income(total_salary)
@@ -249,9 +264,6 @@ async def _run_calculations_for_year(year: int, db_session_factory) -> None:
 
                 # 住宅ローン控除
                 housing_ded_amount = calculate_housing_deduction(decl.housing_deduction)
-
-                # 社会保険料控除（仮）
-                social_insurance_ded = Decimal("700000")
 
                 # 合計所得控除
                 total_deductions = calculate_total_deductions(
@@ -271,10 +283,10 @@ async def _run_calculations_for_year(year: int, db_session_factory) -> None:
                 # 住宅ローン控除（税額控除）
                 final_tax = max(Decimal(0), calculated_tax - housing_ded_amount)
 
-                # 源泉徴収税額（仮）
-                withheld_tax = Decimal("180000")
+                # 年末時点の源泉徴収税額（実際の源泉徴収累計額）
+                withheld_tax = withheld_tax_ytd
 
-                # 還付/徴収
+                # 還付(+) / 追徴(-)
                 refund_or_collection = withheld_tax - final_tax
 
                 # 結果を保存/更新
@@ -298,9 +310,30 @@ async def _run_calculations_for_year(year: int, db_session_factory) -> None:
                 decl.status = "calculated"
 
             await db.commit()
+            await _set_status("completed")
         except Exception as e:
             await db.rollback()
+            await _set_status("failed")
             raise e
+
+
+@router.post("/declarations/{declaration_id}/salary", response_model=DeclarationRead)
+async def set_salary_data(
+    declaration_id: int,
+    data: SalaryDataUpdate,
+    db: DBSession,
+    current_user: CurrentAdmin,
+):
+    """給与データを申告書に設定する（給与システム連携 or 手動入力）"""
+    decl = await db.get(TaxAdjustmentDeclaration, declaration_id)
+    if decl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="申告書が見つかりません")
+    decl.total_salary = data.total_salary
+    decl.social_insurance_deduction = data.social_insurance_deduction
+    decl.withheld_tax_ytd = data.withheld_tax_ytd
+    await db.flush()
+    await db.refresh(decl)
+    return decl
 
 
 @router.post("/calculations/{year}/run", response_model=CalculationRunResponse)
@@ -309,16 +342,35 @@ async def run_calculations(
     background_tasks: BackgroundTasks,
     db: DBSession,
     current_user: CurrentAdmin,
+    redis=get_redis,
 ):
-    import uuid as uuid_mod
-
     task_id = str(uuid_mod.uuid4())
-    background_tasks.add_task(_run_calculations_for_year, year, None)
+    # Redisにステータスを初期化
+    from app.core.deps import get_redis as _get_redis
+    r = await _get_redis()
+    await r.setex(f"calc_status:{task_id}", 3600, "running")
+    background_tasks.add_task(_run_calculations_for_year, year, task_id)
     return CalculationRunResponse(
         message=f"{year}年度の年末調整計算を開始しました",
         year=year,
         task_id=task_id,
     )
+
+
+@router.get("/calculations/{year}/status/{task_id}")
+async def get_calculation_status(
+    year: int,
+    task_id: str,
+    current_user: CurrentAdmin,
+):
+    """計算タスクの進捗をポーリングするエンドポイント"""
+    from app.core.deps import get_redis as _get_redis
+    r = await _get_redis()
+    raw = await r.get(f"calc_status:{task_id}")
+    if raw is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="タスクが見つかりません")
+    task_status = raw if isinstance(raw, str) else raw.decode()
+    return {"task_id": task_id, "status": task_status, "year": year}
 
 
 @router.get("/calculations/{year}/results", response_model=list[ResultRead])
@@ -351,7 +403,7 @@ async def confirm_calculations(
     declarations = result.scalars().all()
     count = 0
     for decl in declarations:
-        decl.status = "approved"  # 最終確定
+        decl.status = "confirmed"  # 最終確定
         count += 1
     await db.flush()
     return ConfirmResponse(

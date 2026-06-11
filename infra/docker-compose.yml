@@ -6,9 +6,11 @@ services:
     volumes:
       - ./frontend/src:/app/src
     depends_on:
-      - bff
+      bff:
+        condition: service_healthy
     environment:
       - VITE_API_URL=http://localhost:4000
+    restart: unless-stopped
 
   bff:
     build: ./bff
@@ -20,8 +22,17 @@ services:
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-key-change-in-production
     depends_on:
-      - api
-      - redis
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
 
   api:
     build: ./backend
@@ -38,10 +49,20 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET=tax-attachments
     depends_on:
-      - db
-      - redis
-      - minio
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
 
   db:
     image: postgres:15-alpine
@@ -54,6 +75,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tax_adjustment"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -61,6 +89,13 @@ services:
       - '6379:6379'
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
 
   minio:
     image: minio/minio:latest
@@ -73,12 +108,20 @@ services:
       - MINIO_ROOT_PASSWORD=minioadmin
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
   mailhog:
     image: mailhog/mailhog:latest
     ports:
       - '1025:1025'
       - '8025:8025'
+    restart: unless-stopped
 
 volumes:
   postgres_data:

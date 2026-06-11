@@ -1,3 +1,5 @@
+import os
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -70,7 +72,10 @@ async def upload_attachment(
 ):
     await _get_declaration(db, declaration_id, current_user.id)
 
-    object_key = f"declarations/{declaration_id}/{uuid.uuid4()}_{file.filename}"
+    # パストラバーサル対策: ベースファイル名のみ取り出し、英数字・ハイフン・ドット以外を除去
+    raw_name = os.path.basename(file.filename or "upload")
+    safe_name = re.sub(r"[^\w.\-]", "_", raw_name)[:200]
+    object_key = f"declarations/{declaration_id}/{uuid.uuid4()}_{safe_name}"
 
     try:
         file_size = await _upload_to_minio(file, object_key)

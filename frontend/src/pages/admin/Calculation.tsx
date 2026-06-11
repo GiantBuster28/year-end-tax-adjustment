@@ -19,7 +19,7 @@ export const Calculation: React.FC = () => {
 
   const { data: jobStatus } = useQuery({
     queryKey: ['calc-status', jobId],
-    queryFn: () => getCalculationStatus(jobId!),
+    queryFn: () => getCalculationStatus(FISCAL_YEAR, jobId!),
     enabled: !!jobId && isPolling,
     refetchInterval: isPolling ? 2000 : false,
   })

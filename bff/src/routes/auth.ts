@@ -119,18 +119,20 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction): 
 
     if (token) {
       try {
-        const decoded = jwt.decode(token) as jwt.JwtPayload | null;
-        const ttl = decoded?.exp
+        // jwt.verify で署名を検証してから失効処理（偽造トークンによるRedis汚染を防ぐ）
+        const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
+        const ttl = decoded.exp
           ? decoded.exp - Math.floor(Date.now() / 1000)
           : 8 * 60 * 60;
 
         if (ttl > 0) {
           const redis = getRedisClient();
-          await redis.setex(`blacklist:${token}`, ttl, '1');
+          // バックエンドの deps.py と同じキープレフィックス "revoked:" を使用
+          await redis.setex(`revoked:${token}`, ttl, '1');
         }
-      } catch (redisErr) {
-        // Non-fatal — log and continue
-        console.error('[auth/logout] Failed to blacklist token:', redisErr);
+      } catch (jwtErr) {
+        // 無効トークンはそのまま無視してログアウト成功を返す（二重ログアウト等）
+        console.warn('[auth/logout] Token verification skipped:', (jwtErr as Error).message);
       }
     }
 

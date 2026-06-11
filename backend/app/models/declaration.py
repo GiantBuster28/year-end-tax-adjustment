@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -14,6 +15,10 @@ class TaxAdjustmentDeclaration(Base):
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), nullable=False)
     fiscal_year: Mapped[int] = mapped_column(Integer(), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="draft", nullable=False)
+    # 給与データ（給与システム連携 or 管理者入力）
+    total_salary: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 0), nullable=True)
+    social_insurance_deduction: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 0), nullable=True)
+    withheld_tax_ytd: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 0), nullable=True)
     submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     approved_by: Mapped[Optional[int]] = mapped_column(ForeignKey("employees.id"), nullable=True)

@@ -25,7 +25,7 @@ def get_dependent_category(dependent: Dependent, fiscal_year: int) -> str:
         return "under_16"
     elif 19 <= age <= 22:
         return "specific"
-    elif age >= 70 and dependent.is_living_together:
+    elif age >= 70 and dependent.is_living_together and dependent.relation_type in ("parent", "grandparent"):
         return "elderly_cohabiting"
     elif age >= 70:
         return "elderly"
@@ -56,6 +56,9 @@ def calculate_spouse_deduction(
     - 配偶者所得48万円以下: 配偶者控除 380,000（70歳以上 480,000）
     - 配偶者所得48万円超133万円以下: 配偶者特別控除（段階的）
     """
+    if int(employee_salary_income) > 10_000_000:
+        return Decimal(0)
+
     spouse_inc = int(spouse_income)
 
     if spouse_inc <= 480_000:

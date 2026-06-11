@@ -64,7 +64,7 @@ export async function authenticate(
   // Check Redis blacklist (tokens invalidated on logout)
   try {
     const redis = getRedisClient();
-    const blacklisted = await redis.get(`blacklist:${token}`);
+    const blacklisted = await redis.get(`revoked:${token}`);
     if (blacklisted) {
       res.status(401).json({
         error: 'Unauthorized',
@@ -74,12 +74,17 @@ export async function authenticate(
       return;
     }
   } catch (redisErr) {
-    // Redis unavailability should not block authentication in non-strict mode.
-    // Log the error but continue (fail-open). Switch to fail-closed if required.
+    // Redis unavailability: fail-closed to protect against revoked-token replay.
     console.error(
       `[auth] Redis check failed (req_id=${req.headers['x-request-id']}):`,
       redisErr,
     );
+    res.status(503).json({
+      error: 'ServiceUnavailable',
+      message: '認証サービスが一時的に利用できません。しばらくしてから再試行してください。',
+      requestId: req.headers['x-request-id'],
+    });
+    return;
   }
 
   // Attach decoded payload so route handlers can read user info

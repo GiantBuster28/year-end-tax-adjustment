@@ -13,15 +13,16 @@ export const sendReminderEmails = async (fiscal_year: number): Promise<{ sent_co
   return data
 }
 
-export const runCalculation = async (fiscal_year: number): Promise<{ job_id: string }> => {
-  const { data } = await client.post('/admin/calculation/run', { fiscal_year })
+export const runCalculation = async (fiscal_year: number): Promise<{ task_id: string }> => {
+  const { data } = await client.post(`/admin/calculations/${fiscal_year}/run`)
   return data
 }
 
 export const getCalculationStatus = async (
-  job_id: string
-): Promise<{ status: string; progress: number; total: number; completed: number }> => {
-  const { data } = await client.get(`/admin/calculation/status/${job_id}`)
+  fiscal_year: number,
+  task_id: string
+): Promise<{ task_id: string; status: string; year: number }> => {
+  const { data } = await client.get(`/admin/calculations/${fiscal_year}/status/${task_id}`)
   return data
 }
 
