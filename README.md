@@ -64,6 +64,97 @@ year-end-tax-adjustment/
 | 1月中旬 | 源泉徴収票発行 |
 | 1月末日 | 法定調書・給与支払報告書提出 |
 
+## セットアップ手順
+
+### 前提条件
+
+- Docker 24+ / Docker Compose v2
+- Git
+
+### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/GiantBuster28/year-end-tax-adjustment.git
+cd year-end-tax-adjustment
+```
+
+### 2. 環境変数の設定
+
+```bash
+cp .env.example .env
+```
+
+本番運用時は以下を必ず変更してください：
+
+| 変数 | 説明 |
+|------|------|
+| `SECRET_KEY` | JWTの署名鍵（ランダムな長い文字列） |
+| `JWT_SECRET` | BFF側のJWT検証鍵（`SECRET_KEY`と同じ値） |
+| `POSTGRES_PASSWORD` | PostgreSQLパスワード |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | MinIO認証情報 |
+
+```bash
+# 安全なランダム鍵の生成例
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+### 3. 起動
+
+```bash
+cd infra
+docker compose up -d
+```
+
+初回起動時はイメージのビルドに数分かかります。各サービスのヘルスチェックが通るまで自動的に起動順序が制御されます。
+
+### 4. DBマイグレーション
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+### 5. アクセス
+
+| サービス | URL |
+|---------|-----|
+| フロントエンド | http://localhost:3000 |
+| BFF（APIゲートウェイ） | http://localhost:4000 |
+| バックエンドAPI | http://localhost:8000 |
+| Swagger UI | http://localhost:8000/docs |
+| MinIOコンソール | http://localhost:9001 |
+| MailHog（開発用メール） | http://localhost:8025 |
+
+### 6. 初期アカウント
+
+| ロール | メールアドレス | パスワード |
+|--------|--------------|-----------|
+| 管理者 | admin@example.com | password123 |
+| 従業員 | yamada.hanako@example.com | password123 |
+
+> **注意**: 初期パスワードは本番環境で必ず変更してください。
+
+### 停止
+
+```bash
+docker compose down        # コンテナ停止
+docker compose down -v     # コンテナ＋データ完全削除
+```
+
+---
+
+## テストの実行
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
+
+- ユニットテスト（58件）：DB・Redisなしで即時実行
+- 統合テスト（22件）：インメモリSQLite + AsyncMock Redis で実行
+
+---
+
 ## ライセンス
 
 社内利用限定
