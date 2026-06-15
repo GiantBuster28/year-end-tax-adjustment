@@ -30,6 +30,7 @@ frontend/build/
 .env
 .env.local
 .env.*.local
+.env.production
 
 # ── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store

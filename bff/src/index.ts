@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { config } from './config';
 import { requestId, httpLogger } from './middleware/logger';
 import { authenticate } from './middleware/auth';
+import { apiRateLimit } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
 import apiRouter from './routes/index';
 import { closeRedisClient } from './redisClient';
@@ -40,6 +41,9 @@ app.use(cookieParser());
 app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', service: 'bff', timestamp: new Date().toISOString() });
 });
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+app.use('/api/v1', apiRateLimit);
 
 // ── JWT authentication (applied to all /api/v1/* routes) ─────────────────────
 app.use('/api/v1', authenticate);

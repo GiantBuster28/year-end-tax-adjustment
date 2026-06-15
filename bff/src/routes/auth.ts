@@ -5,6 +5,7 @@ import { URL } from 'url';
 import { config } from '../config';
 import { getRedisClient } from '../redisClient';
 import jwt from 'jsonwebtoken';
+import { loginRateLimit } from '../middleware/rateLimit';
 
 const router = Router();
 
@@ -53,7 +54,7 @@ function forwardToApi(
  * POST /api/v1/auth/login
  * Forward credentials to backend, set HttpOnly cookie with JWT on success.
  */
-router.post('/login', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/login', loginRateLimit, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const bodyStr = JSON.stringify(req.body);
     const upstream = await forwardToApi(
