@@ -7,6 +7,7 @@ from app.models.insurance import InsuranceDeduction
 from app.models.housing import HousingDeduction
 from app.models.attachment import Attachment
 from app.models.result import TaxAdjustmentResult
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "Base",
@@ -18,4 +19,5 @@ __all__ = [
     "HousingDeduction",
     "Attachment",
     "TaxAdjustmentResult",
+    "AuditLog",
 ]

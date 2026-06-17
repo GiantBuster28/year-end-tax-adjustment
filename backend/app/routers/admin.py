@@ -7,12 +7,13 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.core.deps import CurrentAdmin, DBSession, get_redis
+from app.services import audit
 from app.models.declaration import TaxAdjustmentDeclaration
 from app.models.dependent import Dependent
 from app.models.employee import Employee
@@ -165,6 +166,7 @@ async def get_admin_declaration(
 @router.put("/declarations/{declaration_id}/approve", response_model=DeclarationRead)
 async def approve_declaration(
     declaration_id: int,
+    request: Request,
     db: DBSession,
     current_user: CurrentAdmin,
 ):
@@ -179,6 +181,12 @@ async def approve_declaration(
     decl.status = "approved"
     decl.approved_at = datetime.now(timezone.utc)
     decl.approved_by = current_user.id
+    await audit.record(
+        db, action="declaration_approve", actor_id=current_user.id,
+        target_type="declaration", target_id=declaration_id,
+        detail={"fiscal_year": decl.fiscal_year, "employee_id": decl.employee_id},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.flush()
     await db.refresh(decl)
     return decl
@@ -187,6 +195,7 @@ async def approve_declaration(
 @router.put("/declarations/{declaration_id}/reject", response_model=DeclarationRead)
 async def reject_declaration(
     declaration_id: int,
+    request: Request,
     db: DBSession,
     current_user: CurrentAdmin,
 ):
@@ -199,6 +208,12 @@ async def reject_declaration(
             detail="提出済みまたは審査中の申告書のみ差し戻せます",
         )
     decl.status = "rejected"
+    await audit.record(
+        db, action="declaration_reject", actor_id=current_user.id,
+        target_type="declaration", target_id=declaration_id,
+        detail={"fiscal_year": decl.fiscal_year, "employee_id": decl.employee_id},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.flush()
     await db.refresh(decl)
     return decl
@@ -321,6 +336,7 @@ async def _run_calculations_for_year(year: int, task_id: str | None) -> None:
 async def set_salary_data(
     declaration_id: int,
     data: SalaryDataUpdate,
+    request: Request,
     db: DBSession,
     current_user: CurrentAdmin,
 ):
@@ -331,6 +347,12 @@ async def set_salary_data(
     decl.total_salary = data.total_salary
     decl.social_insurance_deduction = data.social_insurance_deduction
     decl.withheld_tax_ytd = data.withheld_tax_ytd
+    await audit.record(
+        db, action="salary_data_set", actor_id=current_user.id,
+        target_type="declaration", target_id=declaration_id,
+        detail={"total_salary": str(data.total_salary)},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.flush()
     await db.refresh(decl)
     return decl
@@ -340,15 +362,22 @@ async def set_salary_data(
 async def run_calculations(
     year: int,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: DBSession,
     current_user: CurrentAdmin,
     redis=get_redis,
 ):
     task_id = str(uuid_mod.uuid4())
-    # Redisにステータスを初期化
     from app.core.deps import get_redis as _get_redis
     r = await _get_redis()
     await r.setex(f"calc_status:{task_id}", 3600, "running")
+    await audit.record(
+        db, action="calculation_run", actor_id=current_user.id,
+        target_type="calculation", target_id=None,
+        detail={"fiscal_year": year, "task_id": task_id},
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
     background_tasks.add_task(_run_calculations_for_year, year, task_id)
     return CalculationRunResponse(
         message=f"{year}年度の年末調整計算を開始しました",
@@ -391,6 +420,7 @@ async def get_calculation_results(
 @router.post("/calculations/{year}/confirm", response_model=ConfirmResponse)
 async def confirm_calculations(
     year: int,
+    request: Request,
     db: DBSession,
     current_user: CurrentAdmin,
 ):
@@ -405,6 +435,12 @@ async def confirm_calculations(
     for decl in declarations:
         decl.status = "confirmed"  # 最終確定
         count += 1
+    await audit.record(
+        db, action="calculation_confirm", actor_id=current_user.id,
+        target_type="calculation", target_id=None,
+        detail={"fiscal_year": year, "confirmed_count": count},
+        ip_address=request.client.host if request.client else None,
+    )
     await db.flush()
     return ConfirmResponse(
         message=f"{year}年度の計算結果を確定しました",
@@ -442,3 +478,56 @@ async def get_dashboard(
         rejected=counts.get("rejected", 0),
         calculated=counts.get("calculated", 0),
     )
+
+
+class AuditLogRead(BaseModel):
+    id: int
+    actor_id: Optional[int] = None
+    actor_name: Optional[str] = None
+    action: str
+    target_type: Optional[str] = None
+    target_id: Optional[int] = None
+    detail: Optional[str] = None
+    ip_address: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/audit-logs", response_model=list[AuditLogRead])
+async def list_audit_logs(
+    db: DBSession,
+    current_user: CurrentAdmin,
+    action: Optional[str] = Query(None),
+    actor_id: Optional[int] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """監査ログ一覧を取得する（管理者のみ）"""
+    from app.models.audit_log import AuditLog
+    stmt = select(AuditLog).order_by(AuditLog.created_at.desc())
+    if action:
+        stmt = stmt.where(AuditLog.action == action)
+    if actor_id:
+        stmt = stmt.where(AuditLog.actor_id == actor_id)
+    stmt = stmt.offset(offset).limit(limit)
+    result = await db.execute(stmt)
+    logs = result.scalars().all()
+
+    output = []
+    for log in logs:
+        actor_name = None
+        if log.actor:
+            actor_name = f"{log.actor.last_name} {log.actor.first_name}"
+        output.append(AuditLogRead(
+            id=log.id,
+            actor_id=log.actor_id,
+            actor_name=actor_name,
+            action=log.action,
+            target_type=log.target_type,
+            target_id=log.target_id,
+            detail=log.detail,
+            ip_address=log.ip_address,
+            created_at=log.created_at,
+        ))
+    return output
