@@ -38,7 +38,7 @@ export const Calculation: React.FC = () => {
   const calcMutation = useMutation({
     mutationFn: () => runCalculation(FISCAL_YEAR),
     onSuccess: (data) => {
-      setJobId(data.job_id)
+      setJobId(data.task_id)
       setIsPolling(true)
       setCalcError('')
     },

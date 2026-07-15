@@ -21,7 +21,7 @@ export const runCalculation = async (fiscal_year: number): Promise<{ task_id: st
 export const getCalculationStatus = async (
   fiscal_year: number,
   task_id: string
-): Promise<{ task_id: string; status: string; year: number }> => {
+): Promise<{ task_id: string; status: string; year: number; completed: number; total: number }> => {
   const { data } = await client.get(`/admin/calculations/${fiscal_year}/status/${task_id}`)
   return data
 }
