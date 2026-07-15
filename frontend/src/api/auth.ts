@@ -2,9 +2,8 @@ import client from './client'
 import { AuthResponse } from '../types'
 
 export interface LoginPayload {
-  employee_code: string
+  email: string
   password: string
-  role: 'employee' | 'admin'
 }
 
 export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
