@@ -8,6 +8,11 @@ const proxyOptions: Options = {
   target: config.api.url,
   changeOrigin: true,
 
+  // Express strips the '/api/v1' mount prefix from req.url before this
+  // middleware runs; restore the full original path (with query string)
+  // so the backend receives e.g. /api/v1/admin/dashboard, not /admin/dashboard.
+  pathRewrite: (_path, req) => (req as Request).originalUrl,
+
   // Forward the request ID for end-to-end traceability
   on: {
     proxyReq: (proxyReq, req) => {
@@ -18,6 +23,16 @@ const proxyOptions: Options = {
       // Forward real client IP
       const clientIp = (req as Request).ip ?? (req as Request).socket.remoteAddress ?? '';
       proxyReq.setHeader('X-Forwarded-For', clientIp);
+
+      // The backend only checks the Authorization header, not cookies.
+      // authenticate() (bff/src/middleware/auth.ts) accepts the access_token
+      // cookie as a fallback, so mirror that token into Authorization here.
+      if (!(req as Request).headers.authorization) {
+        const cookieToken = (req as Request).cookies?.access_token as string | undefined;
+        if (cookieToken) {
+          proxyReq.setHeader('Authorization', `Bearer ${cookieToken}`);
+        }
+      }
     },
 
     error: (err, req, res) => {

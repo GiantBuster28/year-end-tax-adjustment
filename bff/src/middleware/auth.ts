@@ -36,7 +36,12 @@ export async function authenticate(
   }
 
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const bearerToken = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice('Bearer '.length)
+    : undefined;
+  const token = bearerToken ?? (req.cookies?.access_token as string | undefined);
+
+  if (!token) {
     res.status(401).json({
       error: 'Unauthorized',
       message: 'Missing or malformed Authorization header',
@@ -44,8 +49,6 @@ export async function authenticate(
     });
     return;
   }
-
-  const token = authHeader.slice('Bearer '.length);
 
   let payload: jwt.JwtPayload;
   try {
