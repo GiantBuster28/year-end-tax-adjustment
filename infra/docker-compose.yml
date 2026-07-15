@@ -1,10 +1,10 @@
 services:
   frontend:
-    build: ./frontend
+    build: ../frontend
     ports:
       - '3000:3000'
     volumes:
-      - ./frontend/src:/app/src
+      - ../frontend/src:/app/src
     depends_on:
       bff:
         condition: service_healthy
@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
 
   bff:
-    build: ./bff
+    build: ../bff
     ports:
       - '4000:4000'
     environment:
@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
 
   api:
-    build: ./backend
+    build: ../backend
     ports:
       - '8000:8000'
     environment:
@@ -74,7 +74,7 @@ services:
       - POSTGRES_PASSWORD=postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d tax_adjustment"]
       interval: 5s
