@@ -9,6 +9,7 @@ import { getRedisClient } from '../redisClient';
 const PUBLIC_PATHS: RegExp[] = [
   /^\/health$/,
   /^\/api\/v1\/auth\/login$/,
+  /^\/auth\/login$/,
 ];
 
 function isPublic(path: string): boolean {
