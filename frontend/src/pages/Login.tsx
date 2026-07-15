@@ -7,9 +7,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useAuthStore } from '../stores/auth'
 
 const schema = z.object({
-  employee_code: z.string().min(1, '社員番号を入力してください'),
+  email: z.string().email('メールアドレスの形式が正しくありません').min(1, 'メールアドレスを入力してください'),
   password: z.string().min(1, 'パスワードを入力してください'),
-  role: z.enum(['employee', 'admin']),
 })
 
 type FormData = z.infer<typeof schema>
@@ -36,7 +35,7 @@ export const Login: React.FC = () => {
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { role: 'employee' },
+    defaultValues: { email: '', password: '' },
   })
 
   if (isAuthenticated && user) {
@@ -103,19 +102,20 @@ export const Login: React.FC = () => {
 
           <div>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: '#374151', marginBottom: 6 }}>
-              社員番号 <span style={{ color: '#ef4444' }}>*</span>
+              メールアドレス <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <input
-              {...register('employee_code')}
-              placeholder="例: EMP001"
+              {...register('email')}
+              type="email"
+              placeholder="例: yamada.hanako@example.com"
               style={{
                 ...inputStyle,
-                borderColor: errors.employee_code ? '#ef4444' : '#d1d5db',
+                borderColor: errors.email ? '#ef4444' : '#d1d5db',
               }}
             />
-            {errors.employee_code && (
+            {errors.email && (
               <p style={{ fontSize: 12, color: '#ef4444', marginTop: 4 }}>
-                {errors.employee_code.message}
+                {errors.email.message}
               </p>
             )}
           </div>
@@ -138,22 +138,6 @@ export const Login: React.FC = () => {
                 {errors.password.message}
               </p>
             )}
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: '#374151', marginBottom: 8 }}>
-              ログイン区分
-            </label>
-            <div style={{ display: 'flex', gap: '1.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="radio" {...register('role')} value="employee" />
-                <span style={{ fontSize: 14 }}>従業員</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="radio" {...register('role')} value="admin" />
-                <span style={{ fontSize: 14 }}>管理者</span>
-              </label>
-            </div>
           </div>
 
           <button
