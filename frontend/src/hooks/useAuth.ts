@@ -9,7 +9,7 @@ export const useAuth = () => {
 
   const login = async (payload: LoginPayload) => {
     const response = await apiLogin(payload)
-    setAuth(response.user, response.token)
+    setAuth(response.user, response.access_token)
     if (response.user.is_admin) {
       navigate('/admin/dashboard')
     } else {
