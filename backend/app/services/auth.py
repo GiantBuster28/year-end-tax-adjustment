@@ -3,6 +3,7 @@ from datetime import timedelta
 import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.core.security import create_access_token, verify_password
@@ -13,7 +14,9 @@ from app.schemas.auth import TokenResponse, UserInfo
 async def authenticate_employee(
     db: AsyncSession, email: str, password: str
 ) -> Employee | None:
-    result = await db.execute(select(Employee).where(Employee.email == email))
+    result = await db.execute(
+        select(Employee).options(selectinload(Employee.department)).where(Employee.email == email)
+    )
     employee = result.scalar_one_or_none()
     if employee is None:
         return None
@@ -32,7 +35,14 @@ async def create_session(employee: Employee) -> TokenResponse:
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        user=UserInfo.model_validate(employee),
+        user=UserInfo(
+            id=employee.id,
+            employee_code=employee.employee_code,
+            name=f"{employee.last_name} {employee.first_name}",
+            email=employee.email,
+            is_admin=employee.is_admin,
+            department=employee.department.name if employee.department else None,
+        ),
     )
 
 

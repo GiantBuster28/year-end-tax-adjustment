@@ -9,13 +9,10 @@ class LoginRequest(BaseModel):
 class UserInfo(BaseModel):
     id: int
     employee_code: str
-    last_name: str
-    first_name: str
+    name: str
     email: str
     is_admin: bool
-    department_id: int | None = None
-
-    model_config = {"from_attributes": True}
+    department: str | None = None
 
 
 class TokenResponse(BaseModel):

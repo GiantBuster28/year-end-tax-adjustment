@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.core.security import decode_token
@@ -52,7 +53,9 @@ async def get_current_user(
     if employee_id is None:
         raise credentials_exception
 
-    result = await db.execute(select(Employee).where(Employee.id == int(employee_id)))
+    result = await db.execute(
+        select(Employee).options(selectinload(Employee.department)).where(Employee.id == int(employee_id))
+    )
     employee = result.scalar_one_or_none()
 
     if employee is None or not employee.is_active:

@@ -57,4 +57,11 @@ async def logout(
 
 @router.get("/me", response_model=UserInfo)
 async def get_me(current_user: CurrentUser):
-    return UserInfo.model_validate(current_user)
+    return UserInfo(
+        id=current_user.id,
+        employee_code=current_user.employee_code,
+        name=f"{current_user.last_name} {current_user.first_name}",
+        email=current_user.email,
+        is_admin=current_user.is_admin,
+        department=current_user.department.name if current_user.department else None,
+    )
