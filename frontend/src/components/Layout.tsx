@@ -21,6 +21,7 @@ const employeeNavItems: NavItem[] = [
 
 const adminNavItems: NavItem[] = [
   { path: '/admin/dashboard', label: 'ダッシュボード', icon: '📊' },
+  { path: '/admin/employees', label: '従業員一覧', icon: '👥' },
   { path: '/admin/declarations', label: '申告書一覧', icon: '📋' },
   { path: '/admin/calculation', label: '年税額計算', icon: '🧮' },
   { path: '/admin/calculation/results', label: '計算結果', icon: '📈' },

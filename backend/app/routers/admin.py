@@ -3,7 +3,7 @@
 """
 import asyncio
 import uuid as uuid_mod
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -55,13 +55,12 @@ class AdminDeclarationRead(BaseModel):
 
 
 class DashboardStats(BaseModel):
-    total: int
-    draft: int
-    submitted: int
-    under_review: int
-    approved: int
-    rejected: int
-    calculated: int
+    total_employees: int
+    submitted_count: int
+    under_review_count: int
+    approved_count: int
+    calculated_count: int
+    submission_rate: float
 
 
 class CalculationRunResponse(BaseModel):
@@ -453,31 +452,92 @@ async def confirm_calculations(
 async def get_dashboard(
     db: DBSession,
     current_user: CurrentAdmin,
-    year: Optional[int] = Query(None),
+    fiscal_year: Optional[int] = Query(None),
 ):
     stmt = select(
         TaxAdjustmentDeclaration.status,
         func.count(TaxAdjustmentDeclaration.id).label("cnt"),
     )
-    if year:
-        stmt = stmt.where(TaxAdjustmentDeclaration.fiscal_year == year)
+    if fiscal_year:
+        stmt = stmt.where(TaxAdjustmentDeclaration.fiscal_year == fiscal_year)
     stmt = stmt.group_by(TaxAdjustmentDeclaration.status)
 
     result = await db.execute(stmt)
     rows = result.all()
 
     counts = {row.status: row.cnt for row in rows}
-    total = sum(counts.values())
+    submitted_count = counts.get("submitted", 0)
+    under_review_count = counts.get("under_review", 0)
+    approved_count = counts.get("approved", 0)
+    calculated_count = counts.get("calculated", 0)
+    submitted_total = sum(counts.values()) - counts.get("draft", 0)
+
+    total_employees = (
+        await db.execute(select(func.count()).select_from(Employee).where(Employee.is_active.is_(True)))
+    ).scalar_one()
+
+    submission_rate = submitted_total / total_employees if total_employees else 0.0
 
     return DashboardStats(
-        total=total,
-        draft=counts.get("draft", 0),
-        submitted=counts.get("submitted", 0),
-        under_review=counts.get("under_review", 0),
-        approved=counts.get("approved", 0),
-        rejected=counts.get("rejected", 0),
-        calculated=counts.get("calculated", 0),
+        total_employees=total_employees,
+        submitted_count=submitted_count,
+        under_review_count=under_review_count,
+        approved_count=approved_count,
+        calculated_count=calculated_count,
+        submission_rate=submission_rate,
     )
+
+
+class AdminEmployeeRead(BaseModel):
+    id: int
+    employee_code: str
+    last_name: str
+    first_name: str
+    last_name_kana: Optional[str] = None
+    first_name_kana: Optional[str] = None
+    email: str
+    department_name: Optional[str] = None
+    joined_date: Optional[date] = None
+    is_admin: bool
+    is_active: bool
+
+
+@router.get("/employees", response_model=list[AdminEmployeeRead])
+async def list_admin_employees(
+    db: DBSession,
+    current_user: CurrentAdmin,
+    department_id: Optional[int] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    stmt = select(Employee).options(selectinload(Employee.department))
+    if department_id:
+        stmt = stmt.where(Employee.department_id == department_id)
+    if is_active is not None:
+        stmt = stmt.where(Employee.is_active == is_active)
+    stmt = stmt.order_by(Employee.employee_code)
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(stmt)
+    employees = result.scalars().all()
+
+    return [
+        AdminEmployeeRead(
+            id=e.id,
+            employee_code=e.employee_code,
+            last_name=e.last_name,
+            first_name=e.first_name,
+            last_name_kana=e.last_name_kana,
+            first_name_kana=e.first_name_kana,
+            email=e.email,
+            department_name=e.department.name if e.department else None,
+            joined_date=e.joined_date,
+            is_admin=e.is_admin,
+            is_active=e.is_active,
+        )
+        for e in employees
+    ]
 
 
 class AuditLogRead(BaseModel):

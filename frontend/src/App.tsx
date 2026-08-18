@@ -13,6 +13,7 @@ import { SubmitConfirm } from './pages/employee/SubmitConfirm'
 import { StatusCheck } from './pages/employee/StatusCheck'
 import { WithholdingSlip } from './pages/employee/WithholdingSlip'
 import { Dashboard } from './pages/admin/Dashboard'
+import { EmployeeList } from './pages/admin/EmployeeList'
 import { DeclarationList } from './pages/admin/DeclarationList'
 import { DeclarationDetail } from './pages/admin/DeclarationDetail'
 import { Calculation } from './pages/admin/Calculation'
@@ -148,6 +149,10 @@ function App() {
             <Route
               path="/admin/dashboard"
               element={<AdminLayout><Dashboard /></AdminLayout>}
+            />
+            <Route
+              path="/admin/employees"
+              element={<AdminLayout><EmployeeList /></AdminLayout>}
             />
             <Route
               path="/admin/declarations"

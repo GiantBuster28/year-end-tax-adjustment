@@ -91,6 +91,20 @@ export interface CalculationResult {
   status: string
 }
 
+export interface EmployeeListItem {
+  id: number
+  employee_code: string
+  last_name: string
+  first_name: string
+  last_name_kana?: string
+  first_name_kana?: string
+  email: string
+  department_name?: string
+  joined_date?: string
+  is_admin: boolean
+  is_active: boolean
+}
+
 export interface DashboardStats {
   total_employees: number
   submitted_count: number

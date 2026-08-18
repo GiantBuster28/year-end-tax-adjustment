@@ -1,5 +1,14 @@
 import client from './client'
-import { DashboardStats, CalculationResult, WithholdingSlip } from '../types'
+import { DashboardStats, CalculationResult, WithholdingSlip, EmployeeListItem } from '../types'
+
+export const getEmployees = async (params?: {
+  department_id?: number
+  is_active?: boolean
+  page_size?: number
+}): Promise<EmployeeListItem[]> => {
+  const { data } = await client.get<EmployeeListItem[]>('/admin/employees', { params })
+  return data
+}
 
 export const getDashboardStats = async (fiscal_year: number): Promise<DashboardStats> => {
   const { data } = await client.get<DashboardStats>('/admin/dashboard', {
