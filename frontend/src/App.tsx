@@ -18,6 +18,7 @@ import { DeclarationDetail } from './pages/admin/DeclarationDetail'
 import { Calculation } from './pages/admin/Calculation'
 import { Results } from './pages/admin/Results'
 import { Reports } from './pages/admin/Reports'
+import { DeclarationEdit } from './pages/admin/DeclarationEdit'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -156,6 +157,10 @@ function App() {
             <Route
               path="/admin/declarations/:id"
               element={<AdminLayout><DeclarationDetail /></AdminLayout>}
+            />
+            <Route
+              path="/admin/declarations/:id/edit"
+              element={<AdminLayout><DeclarationEdit /></AdminLayout>}
             />
             <Route
               path="/admin/calculation"

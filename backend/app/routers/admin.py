@@ -3,7 +3,7 @@
 """
 import asyncio
 import uuid as uuid_mod
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -18,6 +18,7 @@ from app.models.declaration import TaxAdjustmentDeclaration
 from app.models.dependent import Dependent
 from app.models.employee import Employee
 from app.models.insurance import InsuranceDeduction
+from app.models.housing import HousingDeduction
 from app.models.result import TaxAdjustmentResult
 from app.schemas.declaration import DeclarationRead, SalaryDataUpdate
 from app.schemas.result import ResultRead
@@ -74,6 +75,61 @@ class ConfirmResponse(BaseModel):
     message: str
     year: int
     confirmed_count: int
+
+
+class DependentUpsert(BaseModel):
+    id: Optional[int] = None
+    relation_type: str
+    last_name: str
+    first_name: str
+    birth_date: Optional[date] = None
+    annual_income: Decimal = Decimal("0")
+    disability_type: str = "none"
+    disability_certificate_type: Optional[str] = None
+    disability_certificate_date: Optional[date] = None
+    disability_description: Optional[str] = None
+    is_living_together: bool = True
+
+class InsuranceUpsert(BaseModel):
+    id: Optional[int] = None
+    insurance_type: str
+    insurance_company: str = ""
+    policy_name: str = ""
+    insured_person: str = ""
+    payment_amount: Decimal = Decimal("0")
+    deduction_amount: Decimal = Decimal("0")
+
+class HousingUpdate(BaseModel):
+    residence_start_date: Optional[date] = None
+    deduction_type: str = "special"
+    loan_balance_1: Decimal = Decimal("0")
+    loan_balance_2: Decimal = Decimal("0")
+    deduction_amount: Decimal = Decimal("0")
+
+class ResultOverride(BaseModel):
+    final_tax: Decimal
+    withheld_tax: Decimal
+    refund_or_collection: Decimal
+
+class AdminDeclarationDetail(BaseModel):
+    id: int
+    employee_id: int
+    fiscal_year: int
+    status: str
+    total_salary: Optional[Decimal] = None
+    social_insurance_deduction: Optional[Decimal] = None
+    withheld_tax_ytd: Optional[Decimal] = None
+    submitted_at: Optional[datetime] = None
+    approved_at: Optional[datetime] = None
+    employee_last_name: Optional[str] = None
+    employee_first_name: Optional[str] = None
+    employee_code: Optional[str] = None
+    department_name: Optional[str] = None
+    dependents: list[dict] = []
+    insurance_deductions: list[dict] = []
+    housing_deduction: Optional[dict] = None
+    result: Optional[dict] = None
+    model_config = {"from_attributes": True}
 
 
 @router.get("/declarations", response_model=list[AdminDeclarationRead])
@@ -492,6 +548,242 @@ class AuditLogRead(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+@router.get("/declarations/{declaration_id}/detail", response_model=AdminDeclarationDetail)
+async def get_admin_declaration_detail(
+    declaration_id: int,
+    db: DBSession,
+    current_user: CurrentAdmin,
+):
+    stmt = (
+        select(TaxAdjustmentDeclaration)
+        .options(
+            selectinload(TaxAdjustmentDeclaration.employee).selectinload(Employee.department),
+            selectinload(TaxAdjustmentDeclaration.dependents),
+            selectinload(TaxAdjustmentDeclaration.insurance_deductions),
+            selectinload(TaxAdjustmentDeclaration.housing_deduction),
+            selectinload(TaxAdjustmentDeclaration.result),
+        )
+        .where(TaxAdjustmentDeclaration.id == declaration_id)
+    )
+    r = await db.execute(stmt)
+    decl = r.scalar_one_or_none()
+    if decl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="申告書が見つかりません")
+
+    emp = decl.employee
+    dept_name = emp.department.name if emp.department else None
+
+    def dep_to_dict(d: Dependent) -> dict:
+        return {
+            "id": d.id, "relation_type": d.relation_type,
+            "last_name": d.last_name, "first_name": d.first_name,
+            "birth_date": str(d.birth_date) if d.birth_date else None,
+            "annual_income": str(d.annual_income),
+            "disability_type": d.disability_type,
+            "is_living_together": d.is_living_together,
+        }
+
+    def ins_to_dict(i: InsuranceDeduction) -> dict:
+        return {
+            "id": i.id, "insurance_type": i.insurance_type,
+            "insurance_company": i.insurance_company,
+            "policy_name": i.policy_name, "insured_person": i.insured_person,
+            "payment_amount": str(i.payment_amount),
+            "deduction_amount": str(i.deduction_amount),
+        }
+
+    housing = None
+    if decl.housing_deduction:
+        h = decl.housing_deduction
+        housing = {
+            "id": h.id,
+            "residence_start_date": str(h.residence_start_date) if h.residence_start_date else None,
+            "deduction_type": h.deduction_type,
+            "loan_balance_1": str(h.loan_balance_1),
+            "loan_balance_2": str(h.loan_balance_2),
+            "deduction_amount": str(h.deduction_amount),
+        }
+
+    result_dict = None
+    if decl.result:
+        res = decl.result
+        result_dict = {
+            "id": res.id,
+            "total_salary": str(res.total_salary),
+            "salary_income": str(res.salary_income),
+            "total_deductions": str(res.total_deductions),
+            "taxable_income": str(res.taxable_income),
+            "calculated_tax": str(res.calculated_tax),
+            "special_tax_credit": str(res.special_tax_credit),
+            "final_tax": str(res.final_tax),
+            "withheld_tax": str(res.withheld_tax),
+            "refund_or_collection": str(res.refund_or_collection),
+            "calculated_at": res.calculated_at.isoformat() if res.calculated_at else None,
+        }
+
+    return AdminDeclarationDetail(
+        id=decl.id, employee_id=decl.employee_id,
+        fiscal_year=decl.fiscal_year, status=decl.status,
+        total_salary=decl.total_salary,
+        social_insurance_deduction=decl.social_insurance_deduction,
+        withheld_tax_ytd=decl.withheld_tax_ytd,
+        submitted_at=decl.submitted_at, approved_at=decl.approved_at,
+        employee_last_name=emp.last_name, employee_first_name=emp.first_name,
+        employee_code=emp.employee_code, department_name=dept_name,
+        dependents=[dep_to_dict(d) for d in decl.dependents],
+        insurance_deductions=[ins_to_dict(i) for i in decl.insurance_deductions],
+        housing_deduction=housing,
+        result=result_dict,
+    )
+
+
+@router.put("/declarations/{declaration_id}/dependents")
+async def update_dependents(
+    declaration_id: int,
+    body: list[DependentUpsert],
+    request: Request,
+    db: DBSession,
+    current_user: CurrentAdmin,
+):
+    decl = await db.get(TaxAdjustmentDeclaration, declaration_id)
+    if decl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="申告書が見つかりません")
+
+    # delete existing dependents not in the new list
+    existing_ids = {d.id for d in body if d.id is not None}
+    stmt = select(Dependent).where(Dependent.declaration_id == declaration_id)
+    r = await db.execute(stmt)
+    existing_deps = r.scalars().all()
+    for dep in existing_deps:
+        if dep.id not in existing_ids:
+            await db.delete(dep)
+
+    for d in body:
+        if d.id is not None:
+            dep = await db.get(Dependent, d.id)
+            if dep and dep.declaration_id == declaration_id:
+                for k, v in d.model_dump(exclude={"id"}).items():
+                    setattr(dep, k, v)
+        else:
+            dep = Dependent(
+                declaration_id=declaration_id,
+                **d.model_dump(exclude={"id"})
+            )
+            db.add(dep)
+
+    await audit.record(
+        db, action="dependents_update", actor_id=current_user.id,
+        target_type="declaration", target_id=declaration_id,
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return {"message": "扶養家族情報を更新しました"}
+
+
+@router.put("/declarations/{declaration_id}/insurance")
+async def update_insurance(
+    declaration_id: int,
+    body: list[InsuranceUpsert],
+    request: Request,
+    db: DBSession,
+    current_user: CurrentAdmin,
+):
+    decl = await db.get(TaxAdjustmentDeclaration, declaration_id)
+    if decl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="申告書が見つかりません")
+
+    existing_ids = {i.id for i in body if i.id is not None}
+    stmt = select(InsuranceDeduction).where(InsuranceDeduction.declaration_id == declaration_id)
+    r = await db.execute(stmt)
+    existing_ins = r.scalars().all()
+    for ins in existing_ins:
+        if ins.id not in existing_ids:
+            await db.delete(ins)
+
+    for i in body:
+        if i.id is not None:
+            ins = await db.get(InsuranceDeduction, i.id)
+            if ins and ins.declaration_id == declaration_id:
+                for k, v in i.model_dump(exclude={"id"}).items():
+                    setattr(ins, k, v)
+        else:
+            ins = InsuranceDeduction(
+                declaration_id=declaration_id,
+                **i.model_dump(exclude={"id"})
+            )
+            db.add(ins)
+
+    await audit.record(
+        db, action="insurance_update", actor_id=current_user.id,
+        target_type="declaration", target_id=declaration_id,
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return {"message": "保険料控除情報を更新しました"}
+
+
+@router.put("/declarations/{declaration_id}/housing")
+async def update_housing(
+    declaration_id: int,
+    body: HousingUpdate,
+    request: Request,
+    db: DBSession,
+    current_user: CurrentAdmin,
+):
+    decl = await db.get(TaxAdjustmentDeclaration, declaration_id)
+    if decl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="申告書が見つかりません")
+
+    stmt = select(HousingDeduction).where(HousingDeduction.declaration_id == declaration_id)
+    r = await db.execute(stmt)
+    housing = r.scalar_one_or_none()
+
+    if housing is None:
+        housing = HousingDeduction(declaration_id=declaration_id)
+        db.add(housing)
+
+    for k, v in body.model_dump().items():
+        setattr(housing, k, v)
+
+    await audit.record(
+        db, action="housing_update", actor_id=current_user.id,
+        target_type="declaration", target_id=declaration_id,
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return {"message": "住宅ローン控除情報を更新しました"}
+
+
+@router.put("/results/{result_id}/override")
+async def override_result(
+    result_id: int,
+    body: ResultOverride,
+    request: Request,
+    db: DBSession,
+    current_user: CurrentAdmin,
+):
+    res = await db.get(TaxAdjustmentResult, result_id)
+    if res is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="計算結果が見つかりません")
+
+    res.final_tax = body.final_tax
+    res.withheld_tax = body.withheld_tax
+    res.refund_or_collection = body.refund_or_collection
+
+    await audit.record(
+        db, action="result_override", actor_id=current_user.id,
+        target_type="result", target_id=result_id,
+        detail={
+            "final_tax": str(body.final_tax),
+            "withheld_tax": str(body.withheld_tax),
+            "refund_or_collection": str(body.refund_or_collection),
+        },
+        ip_address=request.client.host if request.client else None,
+    )
+    await db.commit()
+    return {"message": "計算結果を上書きしました"}
 
 
 @router.get("/audit-logs", response_model=list[AuditLogRead])
