@@ -82,7 +82,7 @@ class DependentUpsert(BaseModel):
     relation_type: str
     last_name: str
     first_name: str
-    birth_date: Optional[date] = None
+    birth_date: date
     annual_income: Decimal = Decimal("0")
     disability_type: str = "none"
     disability_certificate_type: Optional[str] = None
@@ -100,7 +100,7 @@ class InsuranceUpsert(BaseModel):
     deduction_amount: Decimal = Decimal("0")
 
 class HousingUpdate(BaseModel):
-    residence_start_date: Optional[date] = None
+    residence_start_date: date
     deduction_type: str = "special"
     loan_balance_1: Decimal = Decimal("0")
     loan_balance_2: Decimal = Decimal("0")

@@ -135,7 +135,7 @@ export const DeclarationEdit: React.FC = () => {
 
   const housingMutation = useMutation({
     mutationFn: () => updateHousing(declarationId, {
-      residence_start_date: housingForm.residence_start_date || undefined,
+      residence_start_date: housingForm.residence_start_date,
       deduction_type: housingForm.deduction_type,
       loan_balance_1: Number(housingForm.loan_balance_1) || 0,
       loan_balance_2: Number(housingForm.loan_balance_2) || 0,
@@ -328,7 +328,7 @@ export const DeclarationEdit: React.FC = () => {
                   relation_type: d.relation_type as string,
                   last_name: d.last_name as string,
                   first_name: d.first_name as string,
-                  birth_date: d.birth_date as string | undefined,
+                  birth_date: d.birth_date as string || '',
                   annual_income: Number(d.annual_income) || 0,
                   disability_type: d.disability_type as string || 'none',
                   is_living_together: d.is_living_together as boolean,

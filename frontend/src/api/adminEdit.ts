@@ -5,7 +5,7 @@ export interface DependentUpsert {
   relation_type: string
   last_name: string
   first_name: string
-  birth_date?: string
+  birth_date: string
   annual_income: number
   disability_type: string
   is_living_together: boolean
@@ -22,7 +22,7 @@ export interface InsuranceUpsert {
 }
 
 export interface HousingUpdate {
-  residence_start_date?: string
+  residence_start_date: string
   deduction_type: string
   loan_balance_1: number
   loan_balance_2: number
